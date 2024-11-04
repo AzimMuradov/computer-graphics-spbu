@@ -37,7 +37,7 @@ fun main() {
                             state = CatState.entries[random.nextInt(0..2)]
                         )
                     }
-                    delay(random.nextLong(500))
+                    delay(500)
                 }
             }
         }
