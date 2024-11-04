@@ -18,6 +18,8 @@ import kotlinx.coroutines.javafx.JavaFx
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Duration
+import kotlin.math.roundToInt
+import kotlin.math.sqrt
 import kotlin.random.Random
 import kotlin.random.nextInt
 
@@ -43,10 +45,12 @@ fun catsFlow(): Flow<List<CatInfo>> = flow {
 
     while (true) {
         val cats = withContext(Dispatchers.Default) {
-            List(500_000) {
+            val n = 500_000
+            val n2 = sqrt(n.toDouble()).roundToInt()
+            List(n) { i ->
                 CatInfo(
-                    x = random.nextFloat(),
-                    y = random.nextFloat(),
+                    x = (i % n2) / n2.toFloat(),
+                    y = (i / n2) / n2.toFloat(),
                     state = CatState.entries[random.nextInt(0..2)]
                 )
             }
@@ -62,16 +66,19 @@ class App : Application() {
     private lateinit var job: Job
 
     override fun start(stage: Stage) {
+        val w = 800.0
+        val h = 800.0
+
         val canvas = Canvas().apply {
-            this.width = 640.0
-            this.height = 480.0
+            this.width = w
+            this.height = h
         }
 
         val button = Button("ok")
         button.isDisable = false
 
         val root = StackPane(canvas, button)
-        val scene = Scene(root, 640.0, 480.0)
+        val scene = Scene(root, w, h)
 
         stage.scene = scene
         stage.show()
@@ -103,7 +110,7 @@ class App : Application() {
 
 
 private fun GraphicsContext.drawCats(cats: List<CatInfo>) {
-    val r = 8.0
+    val r = 3.0
 
     clearRect(0.0, 0.0, canvas.width, canvas.height)
     for (cat in cats) {
