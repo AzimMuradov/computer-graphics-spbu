@@ -1,0 +1,8 @@
+# Ignore VS Code files
+
+.vscode/
+
+
+# Ignore Idea files
+
+.idea/
