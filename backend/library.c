@@ -31,4 +31,5 @@ void backend_update_state(void) {
 
 void teardown_backend(void) {
     free(backend_g_state);
+    backend_g_state = NULL;
 }
