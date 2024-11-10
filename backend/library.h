@@ -17,8 +17,7 @@ CatState *setup_backend(
     size_t cat_count,
     double map_width,
     double map_height,
-    double fight_radius,
-    double hiss_radius
+    double fight_radius
 );
 
 void backend_update_state(void);

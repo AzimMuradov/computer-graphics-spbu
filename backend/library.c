@@ -10,14 +10,12 @@ CatState *setup_backend(
     const size_t cat_count,
     const double map_width,
     const double map_height,
-    const double fight_radius,
-    const double hiss_radius
+    const double fight_radius
 ) {
     printf("max_n = %zu\n", cat_count);
     printf("map_width = %f\n", map_width);
     printf("map_height = %f\n", map_height);
     printf("fight_radius = %f\n", fight_radius);
-    printf("hiss_radius = %f\n", hiss_radius);
 
     backend_g_state = calloc(cat_count, sizeof(CatState));
 
