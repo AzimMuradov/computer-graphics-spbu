@@ -14,7 +14,7 @@ typedef struct CatState {
 } CatState;
 
 CatState *setup_backend(
-    size_t max_n,
+    size_t cat_count,
     double map_width,
     double map_height,
     double fight_radius,
