@@ -6,7 +6,7 @@
 
 static CatState *backend_g_state = NULL;
 
-CatState *setup_backend(
+CatState *backend_init(
     const size_t cat_count,
     const double map_width,
     const double map_height,
@@ -27,7 +27,7 @@ void backend_update_state(void) {
     // Here we update `backend_g_state`
 }
 
-void teardown_backend(void) {
+void backend_dispose(void) {
     free(backend_g_state);
     backend_g_state = NULL;
 }

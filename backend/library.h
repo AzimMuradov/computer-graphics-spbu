@@ -13,7 +13,7 @@ typedef struct CatState {
     int mood;
 } CatState;
 
-CatState *setup_backend(
+CatState *backend_init(
     size_t cat_count,
     double map_width,
     double map_height,
@@ -22,6 +22,6 @@ CatState *setup_backend(
 
 void backend_update_state(void);
 
-void teardown_backend(void);
+void backend_dispose(void);
 
 #endif // BACKEND_LIBRARY_H
