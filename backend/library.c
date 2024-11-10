@@ -16,7 +16,7 @@ CatState *backend_init(
     const double map_height,
     const double fight_radius
 ) {
-    printf("max_n = %zu\n", cat_count);
+    printf("cat_count = %zu\n", cat_count);
     printf("map_width = %f\n", map_width);
     printf("map_height = %f\n", map_height);
     printf("fight_radius = %f\n", fight_radius);
