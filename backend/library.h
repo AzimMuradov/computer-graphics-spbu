@@ -17,9 +17,11 @@ typedef struct CatState {
 
 CatState *backend_init(
     size_t cat_count,
+    double cat_speed,
     double map_width,
     double map_height,
-    double fight_radius
+    double fight_radius,
+    double hiss_radius
 );
 
 void backend_update_state(void);
