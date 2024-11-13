@@ -1,7 +1,9 @@
 #ifndef BACKEND_LIBRARY_H
 #define BACKEND_LIBRARY_H
 
+
 #include <stddef.h>
+
 
 typedef struct CatState {
     double x;
@@ -15,13 +17,16 @@ typedef struct CatState {
 
 CatState *backend_init(
     size_t cat_count,
+    double cat_speed,
     double map_width,
     double map_height,
-    double fight_radius
+    double fight_radius,
+    double hiss_radius
 );
 
 void backend_update_state(void);
 
 void backend_dispose(void);
+
 
 #endif // BACKEND_LIBRARY_H
