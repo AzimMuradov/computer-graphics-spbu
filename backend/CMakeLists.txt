@@ -3,4 +3,4 @@ project(backend C)
 
 set(CMAKE_C_STANDARD 11)
 
-add_library(backend SHARED library.c third-party/kdtree/kdtree.c)
+add_library(backend SHARED library.c)
