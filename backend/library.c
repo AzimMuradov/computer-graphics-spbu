@@ -6,6 +6,9 @@
 
 #include "internal/random.c"
 
+#define USE_LIST_NODE_ALLOCATOR
+#include "third-party/kdtree/kdtree.c"
+
 
 static CatState *backend_g_state = NULL;
 static size_t backend_g_cat_count = 0;
@@ -89,37 +92,68 @@ static void move_cats(void) {
     }
 }
 
-// Naive implementation
-// TODO : use a better algorithm
 static void update_cats_mood(void) {
+    // Clear mood data
+
     for (size_t i = 0; i < backend_g_cat_count; i++) {
         CatState *cat = &backend_g_state[i];
         cat->mood = CAT_MOOD_CALM;
     }
 
+
+    // Recalculate mood data
+
+    struct kdtree *tree = kd_create(2);
+
+    // Populate kd_tree
+    for (size_t i = 0; i < backend_g_cat_count; i++) {
+        CatState *cat = &backend_g_state[i];
+        const double pos[2] = {cat->x, cat->y};
+        kd_insert(tree, pos, cat);
+    }
+
+    // Calculate "wants to fight" mood
+    for (size_t i = 0; i < backend_g_cat_count; i++) {
+        const CatState *cat = &backend_g_state[i];
+
+        if (cat->mood == CAT_MOOD_WANTS_TO_FIGHT) continue;
+
+        const double pos[2] = {cat->x, cat->y};
+
+        struct kdres *fight_cats = kd_nearest_range(tree, pos, backend_g_fight_radius);
+        if (fight_cats == NULL) exit(1);
+
+        if (kd_res_size(fight_cats) > 1) {
+            for (; !kd_res_end(fight_cats); kd_res_next(fight_cats)) {
+                CatState *fight_cat = kd_res_item_data(fight_cats);
+                fight_cat->mood = CAT_MOOD_WANTS_TO_FIGHT;
+            }
+        }
+        kd_res_free(fight_cats);
+    }
+
+    // Calculate "hisses" mood
     for (size_t i = 0; i < backend_g_cat_count; i++) {
         CatState *cat = &backend_g_state[i];
 
         if (cat->mood == CAT_MOOD_WANTS_TO_FIGHT) continue;
 
-        for (size_t j = i + 1; j < backend_g_cat_count; j++) {
-            CatState *other_cat = &backend_g_state[j];
+        const double pos[2] = {cat->x, cat->y};
 
+        struct kdres *cats = kd_nearest_range(tree, pos, backend_g_hiss_radius);
+        if (cats == NULL) exit(1);
+
+        for (; !kd_res_end(cats); kd_res_next(cats)) {
+            const CatState *other_cat = kd_res_item_data(cats);
+            if (cat == other_cat) continue;
             const double dist = hypot(cat->x - other_cat->x, cat->y - other_cat->y);
-
-            if (dist <= backend_g_fight_radius) {
-                cat->mood = CAT_MOOD_WANTS_TO_FIGHT;
-                other_cat->mood = CAT_MOOD_WANTS_TO_FIGHT;
+            if (rand_ud() <= (backend_g_fight_radius * backend_g_fight_radius) / (dist * dist)) {
+                cat->mood = CAT_MOOD_HISSES;
                 break;
             }
-
-            static const double numerator = backend_g_fight_radius * backend_g_fight_radius;
-            if (dist <= backend_g_hiss_radius && rand_ud() <= numerator / (dist * dist)) {
-                cat->mood = CAT_MOOD_HISSES;
-                if (other_cat->mood == CAT_MOOD_CALM) {
-                    other_cat->mood = CAT_MOOD_HISSES;
-                }
-            }
         }
+        kd_res_free(cats);
     }
+
+    kd_free(tree);
 }
