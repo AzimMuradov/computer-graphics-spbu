@@ -1,32 +1,30 @@
-#ifndef BACKEND_LIBRARY_H
-#define BACKEND_LIBRARY_H
-
-
 #include <stddef.h>
 
-
-typedef struct CatState {
+typedef struct PixelPosition {
     double x;
     double y;
+} PixelPosition;
+
+typedef struct Cat {
+    double x;
+    double y;
+} Cat;
+
+typedef struct CatState {
+    PixelPosition pos;
+    int mood;
     // mood:
     // 0 == calm
     // 1 == hisses
     // 2 == wants to fight
-    int mood;
 } CatState;
 
-CatState *backend_init(
-    size_t cat_count,
-    double cat_speed,
-    double map_width,
-    double map_height,
+void backend_init(
     double fight_radius,
     double hiss_radius
 );
 
-void backend_update_state(void);
+int* update_states(size_t cat_count, Cat *cats, int window_width, int window_height, float scale);
 
-void backend_dispose(void);
+void free_states(int *states);
 
-
-#endif // BACKEND_LIBRARY_H
