@@ -1,61 +1,129 @@
+import argparse
+import sys
+
 import numpy as np
-from scipy.spatial import KDTree
+from cffi import FFI
+from PyQt5.QtWidgets import QApplication
+
+from frontend.ui import MainWindow, MovingPointsCanvas
 
 
-class PointSystem:
-    def __init__(self, points: np.ndarray, r1: float, r2: float):
-        self.__points = points.copy()
-        self.states = np.zeros(len(points), dtype=int)  # Initial states set to 0
-        self.r1 = r1
-        self.r2 = r2
-        self.tree = KDTree(self.__points)  # Use KDTree for efficient neighbor search
+class Core:
+    lib_path = "backend/libbackend.so"
 
-    def update_states(self):
-        # For each point, check neighbors within distance r1 and r2
-        for i, point in enumerate(self.__points):
-            neighbors_r1 = self.tree.query_ball_point(point, self.r1)
-            neighbors_r2 = self.tree.query_ball_point(point, self.r2)
+    def __init__(self):
+        self.ffi = FFI()
+        self.lib = self.ffi.dlopen(self.lib_path)
+        self.init_parser()
+        self.args = self.parser.parse_args()
 
-            # Update state to 1 if within r1 distance
-            for neighbor in neighbors_r1:
-                if neighbor != i:
-                    self.states[neighbor] = 1
+        with open("backend/library.h", mode="r") as f:
+            dec = ""
+            for line in f:
+                if line.startswith("#"):
+                    continue
+                dec += line
+            self.ffi.cdef(dec)
 
-            # Probabilistic update to state 3 if within r2 distance
-            for neighbor in neighbors_r2:
-                if neighbor != i and np.random.rand() < 1 / (self.r2**2):
-                    self.states[neighbor] = 3
+        self.lib.backend_init(self.args.fight_radius, self.args.hiss_radius)
 
-    def apply_deltas(self, deltas: np.ndarray):
-        # Update positions and rebuild KDTree for efficient lookup
-        self.__points += deltas  # Apply deltas to each point
-        self.tree = KDTree(self.__points)  # Rebuild KDTree for updated positions
-        self.update_states()  # Update states after movement
+    def main(self):
+        app = QApplication(sys.argv)
+        window = MainWindow(
+            point_radius=self.args.radius,
+            num_points=self.args.num_points,
+            image_path=self.args.image_path,
+            width=self.args.window_width,
+            height=self.args.window_height,
+            core=self,
+        )
+        self.global_scale = app.devicePixelRatio()
+        self.start_ui(app, window)
 
-    @property
-    def points(self):
-        return self.__points
+    def start_ui(self, app: QApplication, window: MainWindow) -> None:
+        window.show()
+        sys.exit(app.exec_())
 
-    @points.setter
-    def points(self, value: np.ndarray):
-        self.__points = value
-        self.tree = KDTree(self.__points)
+    def update_num_points(self, window: MainWindow, num_points: int) -> None:
+        window.update_num_points(num_points)
 
+    def update_speed(self, window: MainWindow, speed: int) -> None:
+        window.update_speed(speed)
 
-if __name__ == "__main__":
-    # Example usage
-    points = np.array(
-        [(1.0, 2.0), (3.5, 4.5), (6.0, 1.5)]
-    )  # Example list of (x, y) tuples
-    r1 = 1.0  # Distance for state 1
-    r2 = 2.5  # Distance for state 3 interaction probability
+    def update_states(
+        self, num_points: int, points: np.ndarray, width: int, height: int
+    ) -> np.ndarray:
+        points_ptr = self.ffi.cast("Cat*", self.ffi.from_buffer(points))
 
-    system = PointSystem(points, r1, r2)
-    deltas = np.array(
-        [(0.1, -0.2), (0.0, 0.1), (-0.1, 0.3)]
-    )  # Example deltas for point updates
+        result_ptr = self.lib.update_states(
+            num_points, points_ptr, width, height, self.global_scale
+        )
+        # Convert the returned C array to a numpy array
+        result = np.frombuffer(
+            self.ffi.buffer(result_ptr, num_points * self.ffi.sizeof("int")),
+            dtype=np.int32,
+        ).copy()
 
-    # Apply the update loop
-    system.apply_deltas(deltas)  # Update states based on new positions
+        self.lib.free_states(result_ptr)
 
-    print(system.states)  # Check updated states of points
+        return result
+
+    def generate_points(self, count: int, zoom_factor: float) -> np.ndarray:
+        points = np.random.uniform(
+            -1 / zoom_factor, 1 / zoom_factor, size=(count, 2)
+        ).astype(np.float64)
+        return points
+
+    def generate_deltas(
+        self, widget: MovingPointsCanvas, count: int, speed: float
+    ) -> np.ndarray:
+
+        deltas = np.random.uniform(-speed / 20, speed / 20, size=(count, 2))
+        return deltas.astype(np.float64)
+
+    def init_parser(self):
+        self.parser = argparse.ArgumentParser(
+            description="OpenGL Moving Points Application"
+        )
+        self.parser.add_argument(
+            "--radius",
+            type=float,
+            default=50,
+            help="Radius of the points",
+        )
+        self.parser.add_argument(
+            "--image-path",
+            type=str,
+            default=None,
+            help="Path to the image file for point texture",
+        )
+        self.parser.add_argument(
+            "--num-points",
+            type=int,
+            default=50000,
+            help="Number of points",
+        )
+        self.parser.add_argument(
+            "--fight-radius",
+            type=int,
+            default=100,
+            help="Radius of the cat's fight zone, must be smaller than hiss-radius",
+        )
+        self.parser.add_argument(
+            "--hiss-radius",
+            type=int,
+            default=200,
+            help="Radius of the cat's hiss zone, must be larger than fight-radius",
+        )
+        self.parser.add_argument(
+            "--window-width",
+            type=int,
+            default=1000,
+            help="Width of the window",
+        )
+        self.parser.add_argument(
+            "--window-height",
+            type=int,
+            default=800,
+            help="Height of the window",
+        )
