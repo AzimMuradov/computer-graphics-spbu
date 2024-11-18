@@ -6,7 +6,7 @@
 
 #include "internal/random.c"
 
-#define USE_LIST_NODE_ALLOCATOR
+#define NO_PTHREADS
 #include "third-party/kdtree/kdtree.c"
 
 

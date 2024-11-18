@@ -1,5 +1,7 @@
 import argparse
 import sys
+from typing import *
+import platform
 
 import numpy as np
 from cffi import FFI
@@ -8,12 +10,27 @@ from PyQt5.QtWidgets import QApplication
 from frontend.ui import MainWindow, MovingPointsCanvas
 
 
+class Backend(Protocol):
+    def backend_init(self, fight_radius: int, hiss_radius: int): ...
+
+    def update_states(
+        self,
+        num_points: int,
+        points: Any,
+        width: int,
+        height: int,
+        global_scale: float,
+    ): ...
+
+    def free_states(self, states: Any): ...
+
+
 class Core:
     lib_path = "backend/libbackend.so"
 
     def __init__(self):
         self.ffi = FFI()
-        self.lib = self.ffi.dlopen(self.lib_path)
+        self.lib = cast(Backend, self.ffi.dlopen(self.lib_path))
         self.init_parser()
         self.args = self.parser.parse_args()
 
@@ -59,8 +76,9 @@ class Core:
             num_points, points_ptr, width, height, self.global_scale
         )
         # Convert the returned C array to a numpy array
+        buffer: Any = self.ffi.buffer(result_ptr, num_points * self.ffi.sizeof("int"))
         result = np.frombuffer(
-            self.ffi.buffer(result_ptr, num_points * self.ffi.sizeof("int")),
+            buffer=buffer,
             dtype=np.int32,
         ).copy()
 
