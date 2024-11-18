@@ -1,0 +1,21 @@
+cmake-build-debug/
+
+*.pyc
+*.ini
+*/__pycashe__
+
+#cmake files
+CMakeCache.txt
+CMakeLists.txt
+CMakeFiles/
+Makefile
+
+# C extensions
+*.so
+*.cmake
+
+# Environments
+.env
+.venv
+env/
+venv/
