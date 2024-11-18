@@ -13,6 +13,9 @@ Makefile
 # C extensions
 *.so
 *.cmake
+*.dll
+*.a
+*.def
 
 # Environments
 .env

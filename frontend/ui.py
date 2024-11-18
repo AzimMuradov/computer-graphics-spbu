@@ -269,7 +269,9 @@ class MovingPointsCanvas(QGLWidget):
 
         # Get image dimensions and raw data
         width, height = image.width(), image.height()
-        data = image.bits().asstring(width * height * 4)
+        if (bits := image.bits()) is None:
+            raise Exception("Failed to load image")
+        data = bits.asstring(width * height * 4)
 
         # Generate texture ID and bind
         texture_id = glGenTextures(1)
