@@ -36,6 +36,7 @@ class Core(Protocol):
 
 
 # Vertex shader code with zoom and pan transformations
+
 vertex_shader_code = """
 #version 460
 
@@ -54,6 +55,7 @@ void main() {
 """
 
 # Fragment shader code to sample from texture or set color
+
 fragment_shader_code = """
 #version 460
 
@@ -88,6 +90,8 @@ from PyQt5.QtCore import QObject, QThread, pyqtSignal
 
 
 # Worker class to handle the heavy computation
+
+
 class UpdateStatesWorker(QObject):
     finished = pyqtSignal(np.ndarray)  # Signal to return the result
 
@@ -103,6 +107,7 @@ class UpdateStatesWorker(QObject):
 
     def run(self):
         # Perform the heavy computation
+
         states = self.core.update_states(
             self.num_points, self.points, self.width, self.height
         )
@@ -142,14 +147,17 @@ class MovingPointsCanvas(QGLWidget):
         self.r2 = r2
 
         # Generate random points and directions
+
         self.points = self.core.generate_points(self.num_points, self.zoom_factor)
         self.states = np.zeros(self.num_points, dtype=int)
 
         # Timer for updating points
+
         self.timer = QTimer()
         self.core_thread = QThread(parent=self)
 
         # Initial target positions as current positions
+
         self.update_deltas()
         self.target_update_timer = QTimer()
         self.state_update_timer = QTimer()
@@ -169,6 +177,7 @@ class MovingPointsCanvas(QGLWidget):
 
     def update_states(self):
         # Use a worker thread for the heavy computation
+
         if self.is_updating_states:
             return  # Skip if a thread is already running
         self.is_updating_states = True  # Mark as running
@@ -180,6 +189,7 @@ class MovingPointsCanvas(QGLWidget):
         self.worker.moveToThread(self.core_thread)
 
         # Connect signals and slots
+
         self.core_thread.started.connect(self.worker.run)
         self.worker.finished.connect(self.handle_states_update)
         self.worker.finished.connect(self.core_thread.quit)
@@ -187,6 +197,7 @@ class MovingPointsCanvas(QGLWidget):
         self.core_thread.finished.connect(self.core_thread.deleteLater)
         self.worker.finished.connect(self.reset_update_flag)
         # Start the thread
+
         self.core_thread.start()
 
     def reset_update_flag(self):
@@ -195,6 +206,7 @@ class MovingPointsCanvas(QGLWidget):
 
     def handle_states_update(self, new_states: np.ndarray):
         # Update states in the main thread
+
         self.states = new_states
 
     def update_num_points(self, num_points: int):
@@ -206,18 +218,20 @@ class MovingPointsCanvas(QGLWidget):
 
     def update_positions(self):
         # Smoothly interpolate points towards the target positions
+
         interpolation_speed = 1.0 / self.FPS  # Adjust speed factor for smoothness
         self.points += self.deltas * interpolation_speed
 
         # Update the VBO with new positions
+
         if len(self.points) == len(self.states):
             glBindBuffer(GL_ARRAY_BUFFER, self.VBO)
             glBufferSubData(GL_ARRAY_BUFFER, 0, self.points.nbytes, self.points)
 
             # Update the VBO with new states
+
             glBindBuffer(GL_ARRAY_BUFFER, self.stateVBO)
             glBufferSubData(GL_ARRAY_BUFFER, 0, self.states.nbytes, self.states)
-
         self.update()
 
     def initializeGL(self):
@@ -232,20 +246,23 @@ class MovingPointsCanvas(QGLWidget):
         glEnable(GL_PROGRAM_POINT_SIZE)
 
         # Compile shaders and create a shader program
+
         self.shader_program = compileProgram(
             compileShader(vertex_shader_code, GL_VERTEX_SHADER),
             compileShader(fragment_shader_code, GL_FRAGMENT_SHADER),
         )
 
         # Load the texture if an image path is provided
+
         if self.use_texture:
             self.texture = self.load_texture(self.image_path)
-
         # Setup the Vertex Array Object (VAO)
+
         self.VAO = glGenVertexArrays(1)
         glBindVertexArray(self.VAO)
 
         # Setup the Vertex Buffer Object (VBO) for positions
+
         self.VBO = glGenBuffers(1)
         glBindBuffer(GL_ARRAY_BUFFER, self.VBO)
         glBufferData(GL_ARRAY_BUFFER, self.points.nbytes, self.points, GL_DYNAMIC_DRAW)
@@ -255,6 +272,7 @@ class MovingPointsCanvas(QGLWidget):
         glVertexAttribPointer(pos_attrib, 2, GL_DOUBLE, GL_FALSE, 0, None)
 
         # Setup the VBO for states
+
         self.stateVBO = glGenBuffers(1)
         glBindBuffer(GL_ARRAY_BUFFER, self.stateVBO)
         glBufferData(GL_ARRAY_BUFFER, self.states.nbytes, self.states, GL_DYNAMIC_DRAW)
@@ -265,26 +283,31 @@ class MovingPointsCanvas(QGLWidget):
 
     def load_texture(self, file_path):
         # Load image and convert to OpenGL texture
+
         image = QImage(file_path)
         image = image.convertToFormat(QImage.Format_RGBA8888)
 
         # Get image dimensions and raw data
+
         width, height = image.width(), image.height()
         if (bits := image.bits()) is None:
             raise Exception("Failed to load image")
         data = bits.asstring(width * height * 4)
 
         # Generate texture ID and bind
+
         texture_id = glGenTextures(1)
         glBindTexture(GL_TEXTURE_2D, texture_id)
 
         # Set texture parameters
+
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
 
         # Upload the texture data to the GPU
+
         glTexImage2D(
             GL_TEXTURE_2D,
             0,
@@ -304,6 +327,7 @@ class MovingPointsCanvas(QGLWidget):
         glClear(GL_COLOR_BUFFER_BIT)
 
         # Use the shader program and set uniforms
+
         glUseProgram(self.shader_program)
         glUniform1f(
             glGetUniformLocation(self.shader_program, "pointRadius"),
@@ -323,12 +347,13 @@ class MovingPointsCanvas(QGLWidget):
         )
 
         # Bind texture if using
+
         if self.use_texture:
             glActiveTexture(GL_TEXTURE0)
             glBindTexture(GL_TEXTURE_2D, self.texture)
             glUniform1i(glGetUniformLocation(self.shader_program, "pointTexture"), 0)
-
         # Draw points
+
         glBindVertexArray(self.VAO)
         glDrawArrays(GL_POINTS, 0, self.num_points)
 
@@ -337,6 +362,7 @@ class MovingPointsCanvas(QGLWidget):
 
     def wheelEvent(self, event):
         # Zoom in/out with the mouse wheel
+
         self.zoom_factor *= 1.1 if event.angleDelta().y() > 0 else 0.9
         self.update()
 
@@ -348,14 +374,15 @@ class MovingPointsCanvas(QGLWidget):
     def mouseMoveEvent(self, event):
         if self.mouse_dragging:
             # Calculate movement difference
+
             dx = (event.x() - self.last_mouse_pos.x()) / self.width()  # type: ignore[attr-defined]
             dy = (event.y() - self.last_mouse_pos.y()) / self.height()  # type: ignore[attr-defined]
 
             # Update pan offset, scaled by zoom factor
-            self.pan_offset[0] -= 2*dx / self.zoom_factor
-            self.pan_offset[1] += 2*dy / self.zoom_factor
-            self.last_mouse_pos = event.pos()
 
+            self.pan_offset[0] -= 2 * dx / self.zoom_factor
+            self.pan_offset[1] += 2 * dy / self.zoom_factor
+            self.last_mouse_pos = event.pos()
         self.update()
 
     def mouseReleaseEvent(self, event):
@@ -385,18 +412,21 @@ class MainWindow(QMainWindow):
         )
 
         # Number of points control
+
         self.num_points_label = QLabel("Number of Points:")
         self.num_points_input = QSpinBox()
         self.num_points_input.setRange(1, 1000000)
         self.num_points_input.setValue(num_points)
 
         # Speed control slider
+
         self.speed_slider = QSlider(Qt.Horizontal)
         self.speed_slider.setRange(1, 1000)
         self.speed_slider.setValue(200)  # Set default speed factor to 1.0 (scaled)
         self.speed_label = QLabel("Speed: 200")
 
         # Layout for controls
+
         control_layout = QVBoxLayout()
         control_layout.addWidget(self.speed_label)
         control_layout.addWidget(self.speed_slider)
@@ -408,12 +438,14 @@ class MainWindow(QMainWindow):
         self.canvas.setFocus()
 
         # Connect with core
+
         self.speed_slider.valueChanged.connect(partial(self.core.update_speed, self))
         self.num_points_input.valueChanged.connect(
             partial(self.core.update_num_points, self)
         )
 
         # Main widget setup
+
         main_widget = QWidget()
         main_widget.setLayout(control_layout)
         self.setCentralWidget(main_widget)
@@ -422,6 +454,7 @@ class MainWindow(QMainWindow):
         self.canvas.update_num_points(value)
 
     # Exponentially scale the speed factor
+
     def update_speed(self, value: int):
         self.canvas.speed_factor = 1.5 ** ((value - 200) / 20)
         self.speed_label.setText(f"Speed: {str(value)}")
