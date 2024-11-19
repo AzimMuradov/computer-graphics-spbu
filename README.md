@@ -6,12 +6,18 @@
 ```
 pip install requirements.txt
 ```
+```
+gcc -shared -o backend/libbackend.so -fPIC -O3 -ffast-math backend/library.c
+```
+## Run
+```
+python main.py --num-points 5
+```
 
 ## Features
 
-- The number of cats reaches 5*10^5
+- The number of cats reaches 500000 and more
 - Smooth rendering
-- Logging of each cat's interactions
 - Cats can leave the map
 - Zoom and drag the screen for better viewing experience
 
