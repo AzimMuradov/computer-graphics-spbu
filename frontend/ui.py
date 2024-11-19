@@ -63,25 +63,23 @@ uniform bool useTexture;
 out vec4 fragColor;
 
 void main() {
+    vec2 coord = 2.0 * gl_PointCoord - 1.0;
+
+    // float dist = length(coord - vec2(0.5)); // Вычисляем расстояние от центра
+
+    if (dot(coord, coord) > 1.0) {
+        discard;
+    }
+
     if (useTexture) {
-        vec2 coord = gl_PointCoord;
-        fragColor = texture(pointTexture, coord);
+        fragColor = texture(pointTexture, gl_PointCoord);
     } else {
-        vec2 coord = gl_PointCoord - vec2(0.5);
-        float dist = length(coord);
-
-        // Discard fragments outside the circle's radius
-        if (dist > 0.5) {
-            discard;
-        }
-
-        // Color based on state
         if (fragState == 0) {
-            fragColor = vec4(0.0, 0.7, 1.0, 1.0); // Blue
+            fragColor = vec4(0.0, 0.7, 1.0, 1.0);
         } else if (fragState == 1) {
-            fragColor = vec4(0.0, 1.0, 0.0, 1.0); // Green
+            fragColor = vec4(0.0, 1.0, 0.0, 1.0);
         } else if (fragState == 2) {
-            fragColor = vec4(1.0, 0.0, 0.0, 1.0); // Red
+            fragColor = vec4(1.0, 0.0, 0.0, 1.0);
         }
     }
 }
@@ -227,6 +225,9 @@ class MovingPointsCanvas(QGLWidget):
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
+        glEnable(GL_POINT_SPRITE)
+        glEnable(GL_VERTEX_PROGRAM_POINT_SIZE)
+
         glEnable(GL_TEXTURE_2D)
         glEnable(GL_PROGRAM_POINT_SIZE)
 
@@ -351,8 +352,8 @@ class MovingPointsCanvas(QGLWidget):
             dy = (event.y() - self.last_mouse_pos.y()) / self.height()  # type: ignore[attr-defined]
 
             # Update pan offset, scaled by zoom factor
-            self.pan_offset[0] += dx / self.zoom_factor
-            self.pan_offset[1] -= dy / self.zoom_factor
+            self.pan_offset[0] -= 2*dx / self.zoom_factor
+            self.pan_offset[1] += 2*dy / self.zoom_factor
             self.last_mouse_pos = event.pos()
 
         self.update()
@@ -393,7 +394,7 @@ class MainWindow(QMainWindow):
         self.speed_slider = QSlider(Qt.Horizontal)
         self.speed_slider.setRange(1, 1000)
         self.speed_slider.setValue(200)  # Set default speed factor to 1.0 (scaled)
-        self.speed_label = QLabel("Speed:")
+        self.speed_label = QLabel("Speed: 200")
 
         # Layout for controls
         control_layout = QVBoxLayout()
@@ -423,3 +424,4 @@ class MainWindow(QMainWindow):
     # Exponentially scale the speed factor
     def update_speed(self, value: int):
         self.canvas.speed_factor = 1.5 ** ((value - 200) / 20)
+        self.speed_label.setText(f"Speed: {str(value)}")
