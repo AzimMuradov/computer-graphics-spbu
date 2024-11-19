@@ -1,6 +1,7 @@
 # drunk-cats
 
 ## Demo
+![img](demo.png)
 
 ## Setup
 ```
