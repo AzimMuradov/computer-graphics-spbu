@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from functools import partial
 from typing import *
-
+import moderngl
 import numpy as np
 from OpenGL.GL import *
 from OpenGL.GL.shaders import compileProgram, compileShader
@@ -13,6 +13,7 @@ from PyQt5.QtWidgets import (
     QApplication,
     QLabel,
     QMainWindow,
+    QOpenGLWidget,
     QSizePolicy,
     QSlider,
     QSpinBox,
@@ -37,7 +38,7 @@ class Core(Protocol):
 
 # Vertex shader code with zoom and pan transformations
 vertex_shader_code = """
-#version 460
+#version 410 core
 
 in vec2 position; // Point position
 in int state; // Point state (0, 1, or 2)
@@ -55,7 +56,7 @@ void main() {
 
 # Fragment shader code to sample from texture or set color
 fragment_shader_code = """
-#version 460
+#version 410 core
 
 flat in int fragState; // State passed from vertex shader
 uniform sampler2D pointTexture;
@@ -67,13 +68,11 @@ void main() {
         vec2 coord = gl_PointCoord;
         fragColor = texture(pointTexture, coord);
     } else {
-        vec2 coord = gl_PointCoord - vec2(0.5);
-        float dist = length(coord);
+        vec2 coord = 2.0 * gl_PointCoord - 1.0;
 
-        // Discard fragments outside the circle's radius
-        if (dist > 0.5) {
-            discard;
-        }
+        if (dot(coord, coord) > 1.0) {
+                discard;
+            }
 
         // Color based on state
         if (fragState == 0) {
@@ -174,7 +173,6 @@ class MovingPointsCanvas(QGLWidget):
         if self.is_updating_states:
             return  # Skip if a thread is already running
         self.is_updating_states = True  # Mark as running
-
         self.core_thread = QThread(parent=self)
         self.worker = UpdateStatesWorker(
             self.core, self.num_points, self.points, self.width(), self.height()
@@ -207,129 +205,74 @@ class MovingPointsCanvas(QGLWidget):
         self.initializeGL()
 
     def update_positions(self):
-        # Smoothly interpolate points towards the target positions
-        interpolation_speed = 1.0 / self.FPS  # Adjust speed factor for smoothness
+        interpolation_speed = 1.0 / self.FPS
         self.points += self.deltas * interpolation_speed
 
-        # Update the VBO with new positions
-        if len(self.points) == len(self.states):
-            glBindBuffer(GL_ARRAY_BUFFER, self.VBO)
-            glBufferSubData(GL_ARRAY_BUFFER, 0, self.points.nbytes, self.points)
-
-            # Update the VBO with new states
-            glBindBuffer(GL_ARRAY_BUFFER, self.stateVBO)
-            glBufferSubData(GL_ARRAY_BUFFER, 0, self.states.nbytes, self.states)
+        # Update VBO and state buffer with new data
+        self.vbo.write(self.points.astype("f4").tobytes())
+        self.state_buffer.write(self.states.astype("i4").tobytes())
 
         self.update()
 
     def initializeGL(self):
-        glClearColor(0, 0, 0, 1)
-        glEnable(GL_BLEND)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        self.ctx = moderngl.create_context()
+        self.ctx.enable(moderngl.PROGRAM_POINT_SIZE)
+        self.ctx.enable(moderngl.BLEND)
 
-        glEnable(GL_TEXTURE_2D)
-        glEnable(GL_PROGRAM_POINT_SIZE)
-
-        # Compile shaders and create a shader program
-        self.shader_program = compileProgram(
-            compileShader(vertex_shader_code, GL_VERTEX_SHADER),
-            compileShader(fragment_shader_code, GL_FRAGMENT_SHADER),
+        # Compile shaders and create program
+        self.shader_program = self.ctx.program(
+            vertex_shader=vertex_shader_code,
+            fragment_shader=fragment_shader_code,
         )
 
-        # Load the texture if an image path is provided
+        # Load texture if an image path is provided
         if self.use_texture:
             self.texture = self.load_texture(self.image_path)
 
-        # Setup the Vertex Array Object (VAO)
-        self.VAO = glGenVertexArrays(1)
-        glBindVertexArray(self.VAO)
+        # Create Vertex Buffer Object (VBO) for positions
+        self.vbo = self.ctx.buffer(self.points.astype("f4").tobytes())
 
-        # Setup the Vertex Buffer Object (VBO) for positions
-        self.VBO = glGenBuffers(1)
-        glBindBuffer(GL_ARRAY_BUFFER, self.VBO)
-        glBufferData(GL_ARRAY_BUFFER, self.points.nbytes, self.points, GL_DYNAMIC_DRAW)
+        # Create a Buffer for states
+        self.state_buffer = self.ctx.buffer(self.states.astype("i4").tobytes())
 
-        pos_attrib = glGetAttribLocation(self.shader_program, "position")
-        glEnableVertexAttribArray(pos_attrib)
-        glVertexAttribPointer(pos_attrib, 2, GL_DOUBLE, GL_FALSE, 0, None)
-
-        # Setup the VBO for states
-        self.stateVBO = glGenBuffers(1)
-        glBindBuffer(GL_ARRAY_BUFFER, self.stateVBO)
-        glBufferData(GL_ARRAY_BUFFER, self.states.nbytes, self.states, GL_DYNAMIC_DRAW)
-
-        state_attrib = glGetAttribLocation(self.shader_program, "state")
-        glEnableVertexAttribArray(state_attrib)
-        glVertexAttribIPointer(state_attrib, 1, GL_INT, 0, None)
+        # Create Vertex Array Object (VAO)
+        self.vao = self.ctx.vertex_array(
+            self.shader_program,
+            [
+                (self.vbo, "2f", "position"),  # Bind position attribute
+                (self.state_buffer, "1i", "state"),  # Bind state attribute
+            ],
+        )
 
     def load_texture(self, file_path):
-        # Load image and convert to OpenGL texture
-        image = QImage(file_path)
-        image = image.convertToFormat(QImage.Format_RGBA8888)
-
-        # Get image dimensions and raw data
+        image = QImage(file_path).convertToFormat(QImage.Format_RGBA8888)
         width, height = image.width(), image.height()
-        if (bits := image.bits()) is None:
-            raise Exception("Failed to load image")
+
+        bits = image.bits()  # Get the texture data
+        if bits is None:
+            raise Exception("Failed to load texture")
         data = bits.asstring(width * height * 4)
+        texture = self.ctx.texture((width, height), 4, data)
+        texture.use()  # Make the texture active
+        return texture
 
-        # Generate texture ID and bind
-        texture_id = glGenTextures(1)
-        glBindTexture(GL_TEXTURE_2D, texture_id)
-
-        # Set texture parameters
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-
-        # Upload the texture data to the GPU
-        glTexImage2D(
-            GL_TEXTURE_2D,
-            0,
-            GL_RGBA,
-            width,
-            height,
-            0,
-            GL_RGBA,
-            GL_UNSIGNED_BYTE,
-            data,
-        )
-
-        glBindTexture(GL_TEXTURE_2D, 0)
-        return texture_id
-
+    @no_type_check
     def paintGL(self):
-        glClear(GL_COLOR_BUFFER_BIT)
+        self.ctx.clear(0.0, 0.0, 0.0)  # Clear the screen with black
 
-        # Use the shader program and set uniforms
-        glUseProgram(self.shader_program)
-        glUniform1f(
-            glGetUniformLocation(self.shader_program, "pointRadius"),
-            self.point_radius,
-        )
-        glUniform1f(
-            glGetUniformLocation(self.shader_program, "zoom"),
-            np.float64(self.zoom_factor),
-        )
-        glUniform2fv(
-            glGetUniformLocation(self.shader_program, "panOffset"),
-            1,
-            np.float64(self.pan_offset),
-        )
-        glUniform1i(
-            glGetUniformLocation(self.shader_program, "useTexture"), self.use_texture
-        )
+        # Set shader uniforms
+        self.shader_program["pointRadius"].value = self.point_radius
+        self.shader_program["zoom"].value = float(self.zoom_factor)
+        self.shader_program["panOffset"].value = tuple(self.pan_offset)
+        self.shader_program["useTexture"].value = self.use_texture
 
-        # Bind texture if using
+        # Bind the texture if used
         if self.use_texture:
-            glActiveTexture(GL_TEXTURE0)
-            glBindTexture(GL_TEXTURE_2D, self.texture)
-            glUniform1i(glGetUniformLocation(self.shader_program, "pointTexture"), 0)
+            self.texture.use(0)
+            self.shader_program["pointTexture"].value = 0
 
-        # Draw points
-        glBindVertexArray(self.VAO)
-        glDrawArrays(GL_POINTS, 0, self.num_points)
+        # Render the points
+        self.vao.render(moderngl.POINTS, vertices=self.num_points)
 
     def resizeGL(self, w: int, h: int):
         glViewport(0, 0, w, h)
