@@ -217,10 +217,25 @@ class MovingPointsCanvas(QGLWidget):
         self.initializeGL()
 
     def update_positions(self):
+        min_x, max_x = -0.9 / self.zoom_factor, 0.9 / self.zoom_factor  # Adjust these values as needed
+        min_y, max_y = -0.9 / self.zoom_factor, 0.9 / self.zoom_factor  # Adjust these values as needed
         # Smoothly interpolate points towards the target positions
 
         interpolation_speed = 1.0 / self.FPS  # Adjust speed factor for smoothness
-        self.points += self.deltas * interpolation_speed
+        new_points = self.points + self.deltas * interpolation_speed
+        #self.points += self.deltas * interpolation_speed
+
+        print(1.0/self.zoom_factor, max((self.points + self.deltas * interpolation_speed)[:, 0]))
+
+        x_collision = (new_points[:, 0] <= min_x) | (new_points[:, 0] >= max_x)
+        y_collision = (new_points[:, 1] <= min_y) | (new_points[:, 1] >= max_y)
+
+        self.deltas[x_collision, 0] *= -1
+        self.deltas[y_collision, 1] *= -1
+
+        self.points[:, 0] = np.clip(new_points[:, 0], min_x, max_x)
+        self.points[:, 1] = np.clip(new_points[:, 1], min_y, max_y)
+
 
         # Update the VBO with new positions
 
@@ -421,7 +436,7 @@ class MainWindow(QMainWindow):
         # Speed control slider
 
         self.speed_slider = QSlider(Qt.Horizontal)
-        self.speed_slider.setRange(1, 1000)
+        self.speed_slider.setRange(200, 700)
         self.speed_slider.setValue(200)  # Set default speed factor to 1.0 (scaled)
         self.speed_label = QLabel("Speed: 200")
 
