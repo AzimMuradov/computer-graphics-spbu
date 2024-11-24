@@ -218,6 +218,8 @@ class MovingPointsCanvas(QGLWidget):
         self.ctx = moderngl.create_context()
         self.ctx.enable(moderngl.PROGRAM_POINT_SIZE)
         self.ctx.enable(moderngl.BLEND)
+        from OpenGL.raw.GLES1.OES.point_sprite import GL_POINT_SPRITE_OES
+        self.ctx.enable_direct(GL_POINT_SPRITE_OES)
 
         # Compile shaders and create program
         self.shader_program = self.ctx.program(
