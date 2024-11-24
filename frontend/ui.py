@@ -24,19 +24,13 @@ from PyQt5.QtWidgets import (
 
 class Core(Protocol):
     def __init__(self): ...
-
     def start_ui(self, app: QApplication, window: MainWindow): ...
-
     def update_num_points(self, window: MainWindow, num_points: int): ...
-
     def update_speed(self, window: MainWindow, speed: int): ...
-
     def generate_points(self, count: int, zoom_factor: float) -> np.ndarray: ...
-
     def generate_deltas(
         self, widget: MovingPointsCanvas, count: int, speed: float
     ) -> np.ndarray: ...
-
     def update_states(
         self, num_points: int, points: np.ndarray, width: int, height: int
     ) -> np.ndarray: ...
@@ -117,6 +111,7 @@ class UpdateStatesWorker(QObject):
 
 
 class MovingPointsCanvas(QGLWidget):
+
     FPS = 100
 
     def __init__(
