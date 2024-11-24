@@ -24,13 +24,19 @@ from PyQt5.QtWidgets import (
 
 class Core(Protocol):
     def __init__(self): ...
+
     def start_ui(self, app: QApplication, window: MainWindow): ...
+
     def update_num_points(self, window: MainWindow, num_points: int): ...
+
     def update_speed(self, window: MainWindow, speed: int): ...
+
     def generate_points(self, count: int, zoom_factor: float) -> np.ndarray: ...
+
     def generate_deltas(
         self, widget: MovingPointsCanvas, count: int, speed: float
     ) -> np.ndarray: ...
+
     def update_states(
         self, num_points: int, points: np.ndarray, width: int, height: int
     ) -> np.ndarray: ...
@@ -111,7 +117,6 @@ class UpdateStatesWorker(QObject):
 
 
 class MovingPointsCanvas(QGLWidget):
-
     FPS = 100
 
     def __init__(
@@ -218,13 +223,7 @@ class MovingPointsCanvas(QGLWidget):
         self.ctx = moderngl.create_context()
         self.ctx.enable(moderngl.PROGRAM_POINT_SIZE)
         self.ctx.enable(moderngl.BLEND)
-
-        try:
-            from OpenGL.GLES1.OES.point_sprite import GL_POINT_SPRITE_OES
-
-            self.ctx.enable_direct(GL_POINT_SPRITE_OES)
-        except ImportError:
-            pass
+        self.ctx.enable_direct(GL_POINT_SPRITE)
 
         # Compile shaders and create program
         self.shader_program = self.ctx.program(
