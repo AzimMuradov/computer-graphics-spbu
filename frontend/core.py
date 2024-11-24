@@ -106,7 +106,7 @@ class Core:
         self.parser.add_argument(
             "--radius",
             type=float,
-            default=50,
+            default=10,
             help="Radius of the points",
         )
         self.parser.add_argument(
@@ -118,19 +118,19 @@ class Core:
         self.parser.add_argument(
             "--num-points",
             type=int,
-            default=50000,
+            default=500,
             help="Number of points",
         )
         self.parser.add_argument(
             "--fight-radius",
             type=int,
-            default=100,
+            default=15,
             help="Radius of the cat's fight zone, must be smaller than hiss-radius",
         )
         self.parser.add_argument(
             "--hiss-radius",
             type=int,
-            default=200,
+            default=30,
             help="Radius of the cat's hiss zone, must be larger than fight-radius",
         )
         self.parser.add_argument(
