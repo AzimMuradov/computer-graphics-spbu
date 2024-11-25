@@ -5,7 +5,7 @@
 
 ## Setup
 ```
-pip install requirements.txt
+pip install -r requirements.txt
 ```
 ```
 gcc -shared -o backend/libbackend.so -fPIC -O3 -ffast-math backend/library.c
