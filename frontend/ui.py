@@ -1,25 +1,42 @@
 from __future__ import annotations
 
 from functools import partial
+from time import time
 from typing import *
+from PyQt6.QtGui import (
+    QFocusEvent,
+    QInputEvent,
+    QMovie,
+    QSurfaceFormat,
+    QWheelEvent,
+    QMouseEvent,
+)
 import moderngl
 import numpy as np
 from OpenGL.GL import *
-from OpenGL.GL.shaders import compileProgram, compileShader
-from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QImage
-from PyQt5.QtOpenGL import QGLWidget
-from PyQt5.QtWidgets import (
+from PyQt6.QtCore import Qt, QTimer, QThread, QObject, pyqtSignal, QPointF, QEvent
+from PyQt6.QtGui import QImage
+from PyQt6.QtWidgets import (
     QApplication,
     QLabel,
     QMainWindow,
-    QOpenGLWidget,
     QSizePolicy,
     QSlider,
     QSpinBox,
     QVBoxLayout,
     QWidget,
 )
+from PyQt6.QtOpenGLWidgets import QOpenGLWidget
+
+
+def qt_surface_format():
+    fmt = QSurfaceFormat()
+    fmt.setVersion(4, 1)
+    fmt.setProfile(QSurfaceFormat.OpenGLContextProfile.CoreProfile)
+    fmt.setSamples(4)
+    fmt.setDepthBufferSize(24)
+    fmt.setStencilBufferSize(8)
+    return fmt
 
 
 class Core(Protocol):
@@ -85,7 +102,6 @@ void main() {
     }
 }
 """
-from PyQt5.QtCore import QObject, QThread, pyqtSignal
 
 
 # Worker class to handle the heavy computation
@@ -103,14 +119,13 @@ class UpdateStatesWorker(QObject):
         self.height = height
 
     def run(self):
-        # Perform the heavy computation
         states = self.core.update_states(
             self.num_points, self.points, self.width, self.height
         )
         self.finished.emit(states)  # Emit the result when done
 
 
-class MovingPointsCanvas(QGLWidget):
+class MovingPointsCanvas(QOpenGLWidget):
 
     FPS = 100
 
@@ -124,6 +139,7 @@ class MovingPointsCanvas(QGLWidget):
         r2: float = 0.1,
     ):
         super().__init__()
+        self.setFormat(qt_surface_format())
         self.core = core
         self.point_radius = point_radius
         self.num_points = num_points
@@ -132,7 +148,7 @@ class MovingPointsCanvas(QGLWidget):
         self.zoom_factor = 1.0  # Initial zoom factor
         self.pan_offset = np.array([0.0, 0.0], dtype=np.float64)  # Initial pan offset
         self.mouse_dragging = False  # Track if mouse is dragging
-        self.last_mouse_pos = None  # Last mouse position for panning
+        self.last_mouse_pos: QPointF | None = None  # Last mouse position for panning
         self.show_cursor_coords = False  # Flag to toggle cursor display
         self.is_updating_states = False
         self.cursor_coords = np.array(
@@ -142,25 +158,30 @@ class MovingPointsCanvas(QGLWidget):
         self.r1 = r1
         self.r2 = r2
 
+        # self.handler = GhostWidget(self)
+        # self.handler.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        # self.handler.setAttribute(Qt.WidgetAttribute.WA_AcceptTouchEvents, True)
+        # self.setFocusProxy(self.handler)
+
         # Generate random points and directions
         self.points = self.core.generate_points(self.num_points, self.zoom_factor)
         self.states = np.zeros(self.num_points, dtype=int)
 
-        # Timer for updating points
+        # # Timer for updating points
         self.timer = QTimer()
         self.core_thread = QThread(parent=self)
 
-        # Initial target positions as current positions
+        # # Initial target positions as current positions
         self.update_deltas()
         self.target_update_timer = QTimer()
         self.state_update_timer = QTimer()
-        # Timer to update target positions
+        # # Timer to update target positions
 
         self.target_update_timer.timeout.connect(self.update_deltas)
         self.state_update_timer.timeout.connect(self.update_states)
         self.state_update_timer.start(500)
         self.target_update_timer.start(500)  # Update targets every 0.5 seconds
-        self.timer.start(round(1000 / self.FPS))
+        self.timer.start(1)
         self.timer.timeout.connect(self.update_positions)
 
     def update_deltas(self):
@@ -202,16 +223,17 @@ class MovingPointsCanvas(QGLWidget):
         self.points = self.core.generate_points(self.num_points, self.zoom_factor)
         self.states = np.zeros(self.num_points, dtype=int)
         self.update_deltas()
-        self.initializeGL()
+        self.update_buffers()
+        self.update()
 
     def update_positions(self):
         interpolation_speed = 1.0 / self.FPS
         self.points += self.deltas * interpolation_speed
 
         # Update VBO and state buffer with new data
-        self.vbo.write(self.points.astype("f4").tobytes())
-        self.state_buffer.write(self.states.astype("i4").tobytes())
-
+        if len(self.points) == len(self.states):
+            self.vbo.write(self.points.astype("f4").tobytes())
+            self.state_buffer.write(self.states.astype("i4").tobytes())
         self.update()
 
     def initializeGL(self):
@@ -219,6 +241,7 @@ class MovingPointsCanvas(QGLWidget):
         self.ctx.enable(moderngl.PROGRAM_POINT_SIZE)
         self.ctx.enable(moderngl.BLEND)
         self.ctx.enable_direct(GL_POINT_SPRITE)
+        self.ctx.enable_direct(GL_MULTISAMPLE)
 
         # Compile shaders and create program
         self.shader_program = self.ctx.program(
@@ -230,6 +253,10 @@ class MovingPointsCanvas(QGLWidget):
         if self.use_texture:
             self.texture = self.load_texture(self.image_path)
 
+        # Initialize buffers
+        self.init_buffers()
+
+    def init_buffers(self):
         # Create Vertex Buffer Object (VBO) for positions
         self.vbo = self.ctx.buffer(self.points.astype("f4").tobytes())
 
@@ -245,21 +272,17 @@ class MovingPointsCanvas(QGLWidget):
             ],
         )
 
-    def load_texture(self, file_path):
-        image = QImage(file_path).convertToFormat(QImage.Format_RGBA8888)
-        width, height = image.width(), image.height()
-
-        bits = image.bits()  # Get the texture data
-        if bits is None:
-            raise Exception("Failed to load texture")
-        data = bits.asstring(width * height * 4)
-        texture = self.ctx.texture((width, height), 4, data)
-        texture.use()  # Make the texture active
-        return texture
+    def update_buffers(self):
+        self.vbo.orphan(len(self.points) * 8)
+        self.state_buffer.orphan(len(self.states) * 4)
+        self.vbo.write(self.points.astype("f4").tobytes())
+        self.state_buffer.write(self.states.astype("i4").tobytes())
 
     @no_type_check
     def paintGL(self):
-        self.ctx.clear(0.0, 0.0, 0.0)  # Clear the screen with black
+        self.fb = self.ctx.detect_framebuffer(self.defaultFramebufferObject())
+        self.fb.clear()
+        self.fb.use()
 
         # Set shader uniforms
         self.shader_program["pointRadius"].value = self.point_radius
@@ -273,37 +296,70 @@ class MovingPointsCanvas(QGLWidget):
             self.shader_program["pointTexture"].value = 0
 
         # Render the points
+        # self.update_buffers()
         self.vao.render(moderngl.POINTS, vertices=self.num_points)
 
+    def load_texture(self, file_path):
+        image = QMovie(file_path).convertToFormat(QImage.Format_RGBA8888)
+        width, height = image.width(), image.height()
+
+        bits = image.bits()  # Get the texture data
+        if bits is None:
+            raise Exception("Failed to load texture")
+        data = bits.asstring(width * height * 4)
+        texture = self.ctx.texture((width, height), 4, data)
+        texture.use()  # Make the texture active
+        return texture
+
     def resizeGL(self, w: int, h: int):
-        glViewport(0, 0, w, h)
+        self.ctx.viewport = (0, 0, w, h)
 
-    def wheelEvent(self, event):
+    def wheelEvent(self, event: QWheelEvent | None):
         # Zoom in/out with the mouse wheel
-        self.zoom_factor *= 1.1 if event.angleDelta().y() > 0 else 0.9
-        self.update()
+        if event is None:
+            return
+        self.zoom_factor *= 1.1 if event.pixelDelta().y() > 0 else 0.9
 
-    def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
+    def mousePressEvent(self, event: QMouseEvent | None):
+        if event is None:
+            return
+        if event.button() == Qt.MouseButton.LeftButton:
             self.mouse_dragging = True
-            self.last_mouse_pos = event.pos()
+            self.last_mouse_pos = event.position()
 
-    def mouseMoveEvent(self, event):
+    def mouseMoveEvent(self, event: QMouseEvent | None):
+        if event is None or self.last_mouse_pos is None:
+            return
         if self.mouse_dragging:
             # Calculate movement difference
-            dx = (event.x() - self.last_mouse_pos.x()) / self.width()  # type: ignore[attr-defined]
-            dy = (event.y() - self.last_mouse_pos.y()) / self.height()  # type: ignore[attr-defined]
+            dx = (event.position().x() - self.last_mouse_pos.x()) / self.width()  # type: ignore[attr-defined]
+            dy = (event.position().y() - self.last_mouse_pos.y()) / self.height()  # type: ignore[attr-defined]
 
             # Update pan offset, scaled by zoom factor
             self.pan_offset[0] += dx / self.zoom_factor
             self.pan_offset[1] -= dy / self.zoom_factor
-            self.last_mouse_pos = event.pos()
-
-        self.update()
+            self.last_mouse_pos = event.position()
 
     def mouseReleaseEvent(self, event):
-        if event.button() == Qt.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton:
             self.mouse_dragging = False
+
+
+class GhostWidget(QWidget):
+    def __init__(self, parent: QWidget | None = None):
+        super().__init__(parent)
+
+    def event(self, event: QEvent | None):
+        if (parent := self.parent()) is None:
+            return
+        if isinstance(event, QInputEvent):
+            event.ignore()
+            parent.inputEvent(event)
+            if event.isAccepted():
+                return True
+        elif isinstance(event, QFocusEvent):
+            parent.event(event)
+        return super().event(event)
 
 
 class MainWindow(QMainWindow):
@@ -334,7 +390,7 @@ class MainWindow(QMainWindow):
         self.num_points_input.setValue(num_points)
 
         # Speed control slider
-        self.speed_slider = QSlider(Qt.Horizontal)
+        self.speed_slider = QSlider(Qt.Orientation.Horizontal)
         self.speed_slider.setRange(1, 1000)
         self.speed_slider.setValue(200)  # Set default speed factor to 1.0 (scaled)
         self.speed_label = QLabel("Speed:")
@@ -345,10 +401,12 @@ class MainWindow(QMainWindow):
         control_layout.addWidget(self.speed_slider)
         control_layout.addWidget(self.num_points_label)
         control_layout.addWidget(self.num_points_input)
-        self.canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.canvas.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
         control_layout.addWidget(self.canvas)
-        self.canvas.setFocusPolicy(Qt.ClickFocus)
-        self.canvas.setFocus()
+        # self.canvas.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
+        # self.canvas.setFocus()
 
         # Connect with core
         self.speed_slider.valueChanged.connect(partial(self.core.update_speed, self))
