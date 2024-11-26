@@ -3,11 +3,13 @@ import sys
 from typing import *
 import platform
 
+from PyQt6.QtGui import QSurfaceFormat
+from PyQt6.QtCore import Qt
 import numpy as np
 from cffi import FFI
-from PyQt5.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication
 
-from frontend.ui import MainWindow, MovingPointsCanvas
+from frontend.ui import MainWindow, MovingPointsCanvas, qt_surface_format
 
 
 class Backend(Protocol):
@@ -45,6 +47,9 @@ class Core:
         self.lib.backend_init(self.args.fight_radius, self.args.hiss_radius)
 
     def main(self):
+        QSurfaceFormat.setDefaultFormat(qt_surface_format())
+        QApplication.setAttribute(Qt.ApplicationAttribute.AA_ShareOpenGLContexts, True)
+        QApplication.setAttribute(Qt.ApplicationAttribute.AA_UseDesktopOpenGL)
         app = QApplication(sys.argv)
         window = MainWindow(
             point_radius=self.args.radius,
@@ -59,7 +64,7 @@ class Core:
 
     def start_ui(self, app: QApplication, window: MainWindow) -> None:
         window.show()
-        sys.exit(app.exec_())
+        sys.exit(app.exec())
 
     def update_num_points(self, window: MainWindow, num_points: int) -> None:
         window.update_num_points(num_points)
