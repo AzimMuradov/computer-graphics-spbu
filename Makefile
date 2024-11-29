@@ -37,10 +37,7 @@ all: build
 # Run application
 
 .PHONY: run
-run: run-app
-
-.PHONY: run-app
-run-app: $(ACTIVATE) build-backend
+run: build
 	$(PYTHON) main.py
 
 
@@ -50,7 +47,10 @@ run-app: $(ACTIVATE) build-backend
 build: build-app
 
 .PHONY: build-app
-build-app: $(ACTIVATE) build-backend
+build-app: install-reqs build-backend
+
+.PHONY: install-reqs
+install-reqs: $(ACTIVATE)
 
 $(ACTIVATE): requirements.txt
 	python -m venv $(VENV)
