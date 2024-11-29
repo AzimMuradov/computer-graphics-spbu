@@ -40,7 +40,7 @@ all: build
 run: run-app
 
 .PHONY: run-app
-run-app: install-reqs build-backend
+run-app: $(ACTIVATE) build-backend
 	$(PYTHON) main.py
 
 
@@ -50,10 +50,7 @@ run-app: install-reqs build-backend
 build: build-app
 
 .PHONY: build-app
-build-app: install-reqs build-backend
-
-.PHONY: install-reqs
-install-reqs: $(ACTIVATE)
+build-app: $(ACTIVATE) build-backend
 
 $(ACTIVATE): requirements.txt
 	python -m venv $(VENV)
@@ -80,14 +77,14 @@ check: check-app-formatting lint-app test-backend
 check-app-formatting: $(BLACK)
 	$(BLACK) --check .
 
-$(BLACK): install-reqs
+$(BLACK): $(ACTIVATE)
 	$(PIP) install black
 
 .PHONY: lint-app
 lint-app: $(MYPY)
 	$(MYPY) .
 
-$(MYPY): install-reqs
+$(MYPY): $(ACTIVATE)
 	$(PIP) install mypy
 
 # TODO : test-backend
