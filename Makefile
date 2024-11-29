@@ -8,6 +8,9 @@ PIP = $(VENV_BIN_DIR)/pip
 BLACK = $(VENV_BIN_DIR)/black
 MYPY = $(VENV_BIN_DIR)/mypy
 
+# Use GCC by default
+CC = gcc
+
 LIB_SRC = backend/library.c
 LIB_OBJ = backend/library.o
 LIB_TARGET = backend/libbackend.so
@@ -49,7 +52,6 @@ build-app: install-reqs build-backend
 install-reqs: $(ACTIVATE)
 
 $(ACTIVATE): requirements.txt
-	#if [ ! -e $(ACTIVATE) ]; then python -m venv $(VENV); fi
 	python -m venv $(VENV)
 	$(PIP) install -r requirements.txt
 
