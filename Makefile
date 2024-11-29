@@ -1,5 +1,9 @@
 VENV = .venv
-VENV_BIN_DIR = $(VENV)/bin
+ifeq ($(OS),Windows_NT)
+	VENV_BIN_DIR = $(VENV)/Scripts
+else
+	VENV_BIN_DIR = $(VENV)/bin
+endif
 ACTIVATE = $(VENV_BIN_DIR)/activate
 
 PYTHON = $(VENV_BIN_DIR)/python
