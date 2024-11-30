@@ -128,6 +128,10 @@ clean:
 	rm -f backend/*.o
 	rm -f backend/*.so
 
+	rm -rf ./**/__pycache__
+
+	rm -rf .mypy_cache
+
 	rm -rf build
 	rm -f drunk-cats.spec
 	rm -f drunk-cats
