@@ -1,18 +1,19 @@
 # drunk-cats
 
 ## Demo
-![img](demo.png)
+
+![demo](demo.png)
 
 ## Setup
+
+```bash
+make build # or just "make"
 ```
-pip install -r requirements.txt
-```
-```
-gcc -shared -o backend/libbackend.so -fPIC -O3 -ffast-math backend/library.c
-```
+
 ## Run
-```
-python main.py --num-points 5
+
+```bash
+./drunk-cats --num-points 5
 ```
 
 ## Features
@@ -23,4 +24,6 @@ python main.py --num-points 5
 - Zoom and drag the screen for better viewing experience
 
 ## License
-Distributed under the MIT License. See [LICENSE](https://github.com/AzimMuradov/drunk-cats/blob/master/LICENSE) for more information.
+
+Distributed under the MIT License.
+See [LICENSE](https://github.com/AzimMuradov/drunk-cats/blob/master/LICENSE) for more information.
