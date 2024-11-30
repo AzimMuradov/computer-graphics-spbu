@@ -9,20 +9,25 @@ ACTIVATE = $(VENV_BIN_DIR)/activate
 PYTHON = $(VENV_BIN_DIR)/python
 PIP = $(VENV_BIN_DIR)/pip
 
+PYINSTALLER = $(VENV_BIN_DIR)/pyinstaller
+
 BLACK = $(VENV_BIN_DIR)/black
 MYPY = $(VENV_BIN_DIR)/mypy
+
+PY_SRCS = main.py $(wildcard frontend/*.py)
 
 # Use GCC by default
 CC = gcc
 
 LIB_SRC = backend/library.c
+LIB_HDR = backend/library.h
 LIB_OBJ = backend/library.o
 LIB_TARGET = backend/libbackend.so
 
 
-# TODO : create exec, install?, ...
 # The main ones to use:
 # run
+# runi
 # build
 # check
 # format
@@ -38,6 +43,10 @@ all: build
 
 .PHONY: run
 run: build
+	./drunk-cats
+
+.PHONY: run
+runi: $(PY_SRCS) install-reqs $(LIB_HDR) build-backend
 	$(PYTHON) main.py
 
 
@@ -47,7 +56,17 @@ run: build
 build: build-app
 
 .PHONY: build-app
-build-app: install-reqs build-backend
+build-app: drunk-cats
+
+drunk-cats: $(PY_SRCS) $(PYINSTALLER) $(LIB_HDR) $(LIB_TARGET)
+	$(PYINSTALLER)                            \
+        --name="drunk-cats" --distpath="." -F \
+        --add-data="$(LIB_HDR):backend"       \
+        --add-data="$(LIB_TARGET):backend"    \
+        main.py
+
+$(PYINSTALLER): $(ACTIVATE)
+	$(PIP) install pyinstaller
 
 .PHONY: install-reqs
 install-reqs: $(ACTIVATE)
@@ -112,6 +131,10 @@ clean:
 
 	rm -f backend/*.o
 	rm -f backend/*.so
+
+	rm -f drunk-cats.spec
+	rm -rf build
+	rm -f drunk-cats
 
 .PHONY: clean-full
 clean-full: clean
