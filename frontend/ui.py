@@ -318,7 +318,7 @@ class MovingPointsCanvas(QOpenGLWidget):
         # Zoom in/out with the mouse wheel
         if event is None:
             return
-        self.zoom_factor *= 1.1 if event.pixelDelta().y() > 0 else 0.9
+        self.zoom_factor *= 1.1 if event.angleDelta().y() > 0 else 0.9
 
     def mousePressEvent(self, event: QMouseEvent | None):
         if event is None:
