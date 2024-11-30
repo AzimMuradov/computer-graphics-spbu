@@ -1,24 +1,5 @@
-cmake-build-debug/
+# Ignore C build files
 
-*.pyc
-*.ini
-*/__pycashe__
+*.o
 
-#cmake files
-CMakeCache.txt
-CMakeLists.txt
-CMakeFiles/
-Makefile
-
-# C extensions
 *.so
-*.cmake
-*.dll
-*.a
-*.def
-
-# Environments
-.env
-.venv
-env/
-venv/

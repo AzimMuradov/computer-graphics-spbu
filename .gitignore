@@ -7,6 +7,29 @@
 
 .idea/
 
-# Ignore python venv
+
+# Ignore Python virtual environment
 
 .venv/
+
+.env/
+
+venv/
+
+env/
+
+
+# Ignore pyinstaller files
+
+build/
+
+*.spec
+
+drunk-cats
+
+
+# Ignore Python build files
+
+__pycache__/
+
+*.py[cod]
