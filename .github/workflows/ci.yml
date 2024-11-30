@@ -7,8 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  python:
-    needs: c
+  ci:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -21,6 +20,8 @@ jobs:
     steps:
       - name: "Checkout"
         uses: actions/checkout@v4
+      - name: "Build backend"
+        run: make build-backend
       - name: "Set up Python ${{ matrix.python-version }}"
         uses: actions/setup-python@v5
         with:
@@ -29,7 +30,7 @@ jobs:
         uses: jurplel/install-qt-action@v4
         with:
           version: "6.*.*"
-      - name: "Install dependencies"
+      - name: "Install app dependencies"
         run: make install-reqs
       - name: "Check python code formating with black"
         run: make check-app-formatting
@@ -37,18 +38,3 @@ jobs:
         run: make lint-app
       - name: "Build app"
         run: make build-app
-
-  c:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ ubuntu-latest, macos-latest, windows-latest ]
-    defaults:
-      run:
-        shell: bash
-
-    steps:
-      - name: "Checkout"
-        uses: actions/checkout@v4
-      - name: "Build backend"
-        run: make build-backend
