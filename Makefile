@@ -45,7 +45,7 @@ all: build
 run: build
 	./drunk-cats
 
-.PHONY: run
+.PHONY: runi
 runi: $(PY_SRCS) install-reqs $(LIB_HDR) build-backend
 	$(PYTHON) main.py
 
@@ -59,11 +59,11 @@ build: build-app
 build-app: drunk-cats
 
 drunk-cats: $(PY_SRCS) $(PYINSTALLER) $(LIB_HDR) $(LIB_TARGET)
-	$(PYINSTALLER)                            \
-        --name="drunk-cats" --distpath="." -F \
-        --add-data="$(LIB_HDR):backend"       \
-        --add-data="$(LIB_TARGET):backend"    \
-        main.py
+	$(PYINSTALLER) \
+		--name="drunk-cats" --distpath="." -F \
+		--add-data="$(LIB_HDR):backend" \
+		--add-data="$(LIB_TARGET):backend" \
+		main.py
 
 $(PYINSTALLER): $(ACTIVATE)
 	$(PIP) install pyinstaller
@@ -125,15 +125,11 @@ format-app: $(BLACK)
 
 .PHONY: clean
 clean:
-	rm -f frontend/*.c
-	rm -f frontend/*.o
-	rm -f frontend/*.so
-
 	rm -f backend/*.o
 	rm -f backend/*.so
 
-	rm -f drunk-cats.spec
 	rm -rf build
+	rm -f drunk-cats.spec
 	rm -f drunk-cats
 
 .PHONY: clean-full
