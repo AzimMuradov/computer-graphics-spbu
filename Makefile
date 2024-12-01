@@ -9,8 +9,6 @@ ACTIVATE = $(VENV_BIN_DIR)/activate
 PYTHON = $(VENV_BIN_DIR)/python
 PIP = $(VENV_BIN_DIR)/pip
 
-PYINSTALLER = $(VENV_BIN_DIR)/pyinstaller
-
 BLACK = $(VENV_BIN_DIR)/black
 MYPY = $(VENV_BIN_DIR)/mypy
 
@@ -58,22 +56,6 @@ $(ACTIVATE): requirements.txt
 	$(PIP) install -r requirements.txt
 
 
-# Bundle application
-
-.PHONY: bundle
-bundle: drunk-cats
-
-drunk-cats: $(LIB_TARGET) $(PY_SRCS) $(LIB_HDR) $(PYINSTALLER)
-	$(PYINSTALLER)                     \
-	--name="drunk-cats" --windowed     \
-	--add-data="$(LIB_HDR):backend"    \
-	--add-data="$(LIB_TARGET):backend" \
-	main.py
-
-$(PYINSTALLER): $(ACTIVATE)
-	$(PIP) install pyinstaller
-
-
 # Check application
 
 .PHONY: check
@@ -118,10 +100,6 @@ clean:
 	rm -rf ./**/__pycache__
 
 	rm -rf .mypy_cache
-
-	rm -rf build
-	rm -f drunk-cats.spec
-	rm -f dist
 
 .PHONY: clean-full
 clean-full: clean

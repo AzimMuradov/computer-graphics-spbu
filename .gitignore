@@ -24,14 +24,3 @@ env/
 __pycache__/
 
 *.py[cod]
-
-
-# Ignore pyinstaller files
-
-build/
-
-*.spec
-
-drunk-cats
-
-drunk-cats.exe
