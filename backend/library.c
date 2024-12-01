@@ -125,5 +125,9 @@ static double *recalculate_positions(
 }
 
 static double rand_ud(void) {
+#ifndef TEST
     return (double) rand() / (double) RAND_MAX;
+#else
+    return 0.0;
+#endif
 }
