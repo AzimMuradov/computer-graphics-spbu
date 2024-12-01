@@ -23,13 +23,13 @@ make run
 #### Linux, MacOS
 
 ```bash
-.venv/bin/python main.py [OPTIONS]
+./.venv/bin/python main.py [OPTIONS]
 ```
 
 #### Windows
 
 ```bash
-./venv/Scripts/python main.py [OPTIONS]
+./.venv/Scripts/python main.py [OPTIONS]
 ```
 
 ## Features
