@@ -11,7 +11,7 @@ typedef struct Position {
 } Position;
 
 
-void backend_configure(
+void drunk_cats_configure(
     double fight_radius,
     double hiss_radius
 );
@@ -20,7 +20,7 @@ void backend_configure(
 // 0 == calm
 // 1 == hisses
 // 2 == wants to fight
-int *backend_calculate_states(
+int *drunk_cats_calculate_states(
     size_t cat_count,
     const Position *cat_positions,
     int window_width,
@@ -28,7 +28,7 @@ int *backend_calculate_states(
     float scale
 );
 
-void backend_free_states(int *states);
+void drunk_cats_free_states(int *states);
 
 
 #endif // LIBRARY_H

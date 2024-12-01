@@ -7,8 +7,8 @@
 #include "third-party/kdtree/kdtree.c"
 
 
-static double backend_g_fight_radius = 0.0;
-static double backend_g_hiss_radius = 0.0;
+static double drunk_cats_g_fight_radius = 0.0;
+static double drunk_cats_g_hiss_radius = 0.0;
 
 // static const int CAT_MOOD_CALM = 0;
 static const int CAT_MOOD_HISSES = 1;
@@ -26,12 +26,12 @@ static double *recalculate_positions(
 static double rand_ud(void);
 
 
-void backend_configure(const double fight_radius, const double hiss_radius) {
-    backend_g_fight_radius = fight_radius;
-    backend_g_hiss_radius = hiss_radius;
+void drunk_cats_configure(const double fight_radius, const double hiss_radius) {
+    drunk_cats_g_fight_radius = fight_radius;
+    drunk_cats_g_hiss_radius = hiss_radius;
 }
 
-int *backend_calculate_states(
+int *drunk_cats_calculate_states(
     const size_t cat_count,
     const Position *cat_positions,
     const int window_width,
@@ -56,7 +56,7 @@ int *backend_calculate_states(
 
         if (*mood == CAT_MOOD_WANTS_TO_FIGHT) continue;
 
-        struct kdres *fight_cats = kd_nearest_range(tree, positions + 2 * i, backend_g_fight_radius);
+        struct kdres *fight_cats = kd_nearest_range(tree, positions + 2 * i, drunk_cats_g_fight_radius);
         if (fight_cats == NULL) exit(1);
 
         if (kd_res_size(fight_cats) > 1) {
@@ -74,7 +74,7 @@ int *backend_calculate_states(
 
         if (*mood == CAT_MOOD_WANTS_TO_FIGHT) continue;
 
-        struct kdres *hiss_cats = kd_nearest_range(tree, positions + 2 * i, backend_g_hiss_radius);
+        struct kdres *hiss_cats = kd_nearest_range(tree, positions + 2 * i, drunk_cats_g_hiss_radius);
         if (hiss_cats == NULL) exit(1);
 
         for (; !kd_res_end(hiss_cats); kd_res_next(hiss_cats)) {
@@ -84,7 +84,7 @@ int *backend_calculate_states(
                 positions[2 * i] - positions[2 * other_cat_i],
                 positions[2 * i + 1] - positions[2 * other_cat_i + 1]
             );
-            if (rand_ud() <= (backend_g_fight_radius * backend_g_fight_radius) / (dist * dist)) {
+            if (rand_ud() <= (drunk_cats_g_fight_radius * drunk_cats_g_fight_radius) / (dist * dist)) {
                 *mood = CAT_MOOD_HISSES;
                 break;
             }
@@ -99,7 +99,7 @@ int *backend_calculate_states(
     return moods;
 }
 
-void backend_free_states(int *states) {
+void drunk_cats_free_states(int *states) {
     free(states);
 }
 
