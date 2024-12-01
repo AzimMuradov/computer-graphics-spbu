@@ -49,7 +49,7 @@ class Core:
 
         self.args = self.parser.parse_args()
 
-        self.lib.backend_init(self.args.fight_radius, self.args.hiss_radius)
+        self.lib.backend_configure(self.args.fight_radius, self.args.hiss_radius)
 
     def main(self):
         QSurfaceFormat.setDefaultFormat(qt_surface_format())
@@ -80,9 +80,9 @@ class Core:
     def update_states(
         self, num_points: int, points: np.ndarray, width: int, height: int
     ) -> np.ndarray:
-        points_ptr = self.ffi.cast("Cat*", self.ffi.from_buffer(points))
+        points_ptr = self.ffi.cast("Position *", self.ffi.from_buffer(points))
 
-        result_ptr = self.lib.update_states(
+        result_ptr = self.lib.backend_calculate_states(
             num_points, points_ptr, width, height, self.global_scale
         )
         # Convert the returned C array to a numpy array
@@ -92,7 +92,7 @@ class Core:
             dtype=np.int32,
         ).copy()
 
-        self.lib.free_states(result_ptr)
+        self.lib.backend_free_states(result_ptr)
 
         return result
 

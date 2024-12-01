@@ -1,30 +1,34 @@
+#ifndef LIBRARY_H
+#define LIBRARY_H
+
+
 #include <stddef.h>
 
-typedef struct PixelPosition {
+
+typedef struct Position {
     double x;
     double y;
-} PixelPosition;
+} Position;
 
-typedef struct Cat {
-    double x;
-    double y;
-} Cat;
 
-typedef struct CatState {
-    PixelPosition pos;
-    int mood;
-    // mood:
-    // 0 == calm
-    // 1 == hisses
-    // 2 == wants to fight
-} CatState;
-
-void backend_init(
+void drunk_cats_configure(
     double fight_radius,
     double hiss_radius
 );
 
-int* update_states(size_t cat_count, Cat *cats, int window_width, int window_height, float scale);
+// state:
+// 0 == calm
+// 1 == hisses
+// 2 == wants to fight
+int *drunk_cats_calculate_states(
+    size_t cat_count,
+    const Position *cat_positions,
+    int window_width,
+    int window_height,
+    float scale
+);
 
-void free_states(int *states);
+void drunk_cats_free_states(int *states);
 
+
+#endif // LIBRARY_H
