@@ -7,6 +7,20 @@
 
 .idea/
 
-# Ignore python venv
+
+# Ignore Python virtual environment
 
 .venv/
+
+.env/
+
+venv/
+
+env/
+
+
+# Ignore Python build files
+
+__pycache__/
+
+*.py[cod]

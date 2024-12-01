@@ -1,18 +1,35 @@
 # drunk-cats
 
 ## Demo
-![img](demo.png)
+
+![demo](demo.png)
 
 ## Setup
+
+```bash
+make build # or just "make"
 ```
-pip install -r requirements.txt
-```
-```
-gcc -shared -o backend/libbackend.so -fPIC -O3 -ffast-math backend/library.c
-```
+
 ## Run
+
+### Using `make`
+
+```bash
+make run
 ```
-python main.py --num-points 5
+
+### Using `python` directly
+
+#### Linux, MacOS
+
+```bash
+./.venv/bin/python main.py [OPTIONS]
+```
+
+#### Windows
+
+```bash
+./.venv/Scripts/python main.py [OPTIONS]
 ```
 
 ## Features
@@ -23,4 +40,6 @@ python main.py --num-points 5
 - Zoom and drag the screen for better viewing experience
 
 ## License
-Distributed under the MIT License. See [LICENSE](https://github.com/AzimMuradov/drunk-cats/blob/master/LICENSE) for more information.
+
+Distributed under the MIT License.
+See [LICENSE](https://github.com/AzimMuradov/drunk-cats/blob/master/LICENSE) for more information.

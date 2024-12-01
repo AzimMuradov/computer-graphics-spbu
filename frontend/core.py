@@ -28,21 +28,26 @@ class Backend(Protocol):
 
 
 class Core:
-    lib_path = "backend/libbackend.so"
-
     def __init__(self):
         self.ffi = FFI()
-        self.lib = cast(Backend, self.ffi.dlopen(self.lib_path))
-        self.init_parser()
-        self.args = self.parser.parse_args()
 
-        with open("backend/library.h", mode="r") as f:
+        from pathlib import Path
+
+        backend_dir = Path(__file__).parent.parent / "backend"
+
+        with open(backend_dir / "library.h", mode="r") as f:
             dec = ""
             for line in f:
                 if line.startswith("#"):
                     continue
                 dec += line
             self.ffi.cdef(dec)
+
+        self.lib = cast(Backend, self.ffi.dlopen(str(backend_dir / "libbackend.so")))
+
+        self.init_parser()
+
+        self.args = self.parser.parse_args()
 
         self.lib.backend_init(self.args.fight_radius, self.args.hiss_radius)
 
