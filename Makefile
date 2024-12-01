@@ -25,16 +25,6 @@ LIB_OBJ = backend/library.o
 LIB_TARGET = backend/libbackend.so
 
 
-# The main ones to use:
-# run
-# runi
-# build
-# check
-# format
-# clean
-# clean-full
-
-
 .PHONY: all
 all: build
 
@@ -42,40 +32,14 @@ all: build
 # Run application
 
 .PHONY: run
-run: build
-	./drunk-cats
-
-.PHONY: runi
-runi: $(PY_SRCS) install-reqs $(LIB_HDR) build-backend
+run: build $(PY_SRCS) $(LIB_HDR)
 	$(PYTHON) main.py
 
 
 # Build application
 
 .PHONY: build
-build: build-app
-
-.PHONY: build-app
-build-app: drunk-cats
-
-drunk-cats: $(PY_SRCS) $(PYINSTALLER) $(LIB_HDR) $(LIB_TARGET)
-	$(PYINSTALLER) \
-		--name="drunk-cats" --distpath="." -F \
-		--add-data="$(LIB_HDR):backend" \
-		--add-data="$(LIB_TARGET):backend" \
-		main.py
-
-$(PYINSTALLER): $(ACTIVATE)
-	$(PIP) install pyinstaller
-
-.PHONY: install-reqs
-install-reqs: $(ACTIVATE)
-
-$(ACTIVATE): requirements.txt
-	python -m venv $(VENV)
-	$(PIP) install -r requirements.txt
-
-# Build backend
+build: build-backend install-deps
 
 .PHONY: build-backend
 build-backend: $(LIB_TARGET)
@@ -86,39 +50,62 @@ $(LIB_TARGET): $(LIB_OBJ)
 $(LIB_OBJ): $(LIB_SRC)
 	$(CC) -c $(LIB_SRC) -Wall -pedantic -Wextra -Werror -O3 -fPIC -ffast-math -o $(LIB_OBJ)
 
+.PHONY: install-deps
+install-deps: $(ACTIVATE)
 
-# Check code
+$(ACTIVATE): requirements.txt
+	python -m venv $(VENV)
+	$(PIP) install -r requirements.txt
+
+
+# Bundle application
+
+.PHONY: bundle
+bundle: drunk-cats
+
+drunk-cats: $(LIB_TARGET) $(PY_SRCS) $(LIB_HDR) $(PYINSTALLER)
+	$(PYINSTALLER)                     \
+	--name="drunk-cats" --windowed     \
+	--add-data="$(LIB_HDR):backend"    \
+	--add-data="$(LIB_TARGET):backend" \
+	main.py
+
+$(PYINSTALLER): $(ACTIVATE)
+	$(PIP) install pyinstaller
+
+
+# Check application
 
 .PHONY: check
-check: check-app-formatting lint-app test-backend
+check: test-backend check-frontend-formatting check-frontend-linting
 
-.PHONY: check-app-formatting
-check-app-formatting: $(BLACK)
+.PHONY: test-backend
+test-backend:
+	# TODO : add tests for backend
+
+.PHONY: check-frontend-formatting
+check-frontend-formatting: $(BLACK)
 	$(BLACK) --check .
+
+.PHONY: check-frontend-linting
+check-frontend-linting: $(MYPY)
+	$(MYPY) .
+
+
+# Format application
+
+.PHONY: format
+format: $(BLACK)
+	$(BLACK) .
+
+
+# Install dependencies for check and format
 
 $(BLACK): $(ACTIVATE)
 	$(PIP) install black
 
-.PHONY: lint-app
-lint-app: $(MYPY)
-	$(MYPY) .
-
 $(MYPY): $(ACTIVATE)
 	$(PIP) install mypy
-
-# TODO : test-backend
-.PHONY: test-backend
-test-backend:
-
-
-# Format code
-
-.PHONY: format
-format: format-app
-
-.PHONY: format-app
-format-app: $(BLACK)
-	$(BLACK) .
 
 
 # Clean
@@ -134,7 +121,7 @@ clean:
 
 	rm -rf build
 	rm -f drunk-cats.spec
-	rm -f drunk-cats
+	rm -f dist
 
 .PHONY: clean-full
 clean-full: clean

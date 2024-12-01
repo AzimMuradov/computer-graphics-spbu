@@ -12,8 +12,24 @@ make build # or just "make"
 
 ## Run
 
+### Using `make`
+
 ```bash
-./drunk-cats --num-points 5
+make run
+```
+
+### Using `python` directly
+
+#### Linux, MacOS
+
+```bash
+.venv/bin/python main.py [OPTIONS]
+```
+
+#### Windows
+
+```bash
+./venv/Scripts/python main.py [OPTIONS]
 ```
 
 ## Features
