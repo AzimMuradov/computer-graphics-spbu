@@ -2,7 +2,6 @@ import pytest
 from typing import *
 import numpy as np
 from cffi import FFI
-from frontend.core import Backend
 
 window_width = 20
 window_height = 20
@@ -21,7 +20,7 @@ with open(backend_dir / "library.h", mode="r") as f:
             continue
         dec += line
     ffi.cdef(dec)
-lib = cast(Backend, ffi.dlopen(str(backend_dir / "libbackend.so")))
+lib = ffi.dlopen(str(backend_dir / "libbackend_test.so"))
 
 
 @pytest.fixture

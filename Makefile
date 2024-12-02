@@ -57,10 +57,10 @@ $(LIB_OBJ): $(LIB_SRC)
 build-backend-test: $(LIB_TARGET_TEST)
 
 $(LIB_TARGET_TEST): $(LIB_OBJ_TEST)
-        $(CC) $(LIB_OBJ_TEST) -shared -o $(LIB_TARGET_TEST)
+	$(CC) $(LIB_OBJ_TEST) -shared -o $(LIB_TARGET_TEST)
 
 $(LIB_OBJ_TEST): $(LIB_SRC)
-        **$(CC) -c $(LIB_SRC) $(CFLAGS) -DTEST -o $(LIB_OBJ_TEST)**
+	$(CC) -c $(LIB_SRC) $(CFLAGS) -DTEST -o $(LIB_OBJ_TEST)
 
 .PHONY: install-deps
 install-deps: $(ACTIVATE)
@@ -76,8 +76,8 @@ $(ACTIVATE): requirements.txt
 check: test-backend check-frontend-formatting check-frontend-linting
 
 .PHONY: test-backend
-test-backend: build-backend-test
-	$(PYTEST) tests
+test-backend: build-backend-test $(PYTEST)
+	$(PYTHON) -m pytest tests
 
 .PHONY: check-frontend-formatting
 check-frontend-formatting: $(BLACK)
@@ -102,6 +102,9 @@ $(BLACK): $(ACTIVATE)
 
 $(MYPY): $(ACTIVATE)
 	$(PIP) install mypy
+
+$(PYTEST): $(ACTIVATE)
+	$(PIP) install pytest
 
 
 # Clean
