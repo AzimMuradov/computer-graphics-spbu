@@ -21,12 +21,10 @@ class Backend(Protocol):
         cat_positions: Any,
         window_width: int,
         window_height: int,
-        scale: float
-        ): ...
+        scale: float,
+    ): ...
 
     def drunk_cats_free_states(self, states: Any): ...
-
-
 class Core:
     def __init__(self):
         self.ffi = FFI()
@@ -42,7 +40,6 @@ class Core:
                     continue
                 dec += line
             self.ffi.cdef(dec)
-
         self.lib = cast(Backend, self.ffi.dlopen(str(backend_dir / "libbackend.so")))
 
         self.init_parser()
@@ -85,6 +82,7 @@ class Core:
             num_points, points_ptr, width, height, self.global_scale
         )
         # Convert the returned C array to a numpy array
+
         buffer: Any = self.ffi.buffer(result_ptr, num_points * self.ffi.sizeof("int"))
         result = np.frombuffer(
             buffer=buffer,
