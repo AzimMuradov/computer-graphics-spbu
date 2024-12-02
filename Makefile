@@ -11,6 +11,7 @@ PIP = $(VENV_BIN_DIR)/pip
 
 BLACK = $(VENV_BIN_DIR)/black
 MYPY = $(VENV_BIN_DIR)/mypy
+PYTEST = $(VENV_BIN_DIR)/pytest
 
 PY_SRCS = main.py $(wildcard frontend/*.py)
 
@@ -22,6 +23,10 @@ LIB_HDR = backend/library.h
 LIB_OBJ = backend/library.o
 LIB_TARGET = backend/libbackend.so
 
+LIB_OBJ_TEST = backend/library_test.o
+LIB_TARGET_TEST = backend/libbackend_test.so
+
+CFLAGS = -Wall -pedantic -Wextra -Werror -O3 -fPIC -ffast-math
 
 .PHONY: all
 all: build
@@ -46,7 +51,16 @@ $(LIB_TARGET): $(LIB_OBJ)
 	$(CC) $(LIB_OBJ) -shared -o $(LIB_TARGET)
 
 $(LIB_OBJ): $(LIB_SRC)
-	$(CC) -c $(LIB_SRC) -Wall -pedantic -Wextra -Werror -O3 -fPIC -ffast-math -o $(LIB_OBJ)
+	$(CC) -c $(LIB_SRC) $(CFLAGS) -o $(LIB_OBJ)
+
+.PHONY: build-backend-test
+build-backend-test: $(LIB_TARGET_TEST)
+
+$(LIB_TARGET_TEST): $(LIB_OBJ_TEST)
+        $(CC) $(LIB_OBJ_TEST) -shared -o $(LIB_TARGET_TEST)
+
+$(LIB_OBJ_TEST): $(LIB_SRC)
+        **$(CC) -c $(LIB_SRC) $(CFLAGS) -DTEST -o $(LIB_OBJ_TEST)**
 
 .PHONY: install-deps
 install-deps: $(ACTIVATE)
@@ -62,8 +76,8 @@ $(ACTIVATE): requirements.txt
 check: test-backend check-frontend-formatting check-frontend-linting
 
 .PHONY: test-backend
-test-backend:
-	# TODO : add tests for backend
+test-backend: build-backend-test
+	$(PYTEST) tests
 
 .PHONY: check-frontend-formatting
 check-frontend-formatting: $(BLACK)

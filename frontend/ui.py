@@ -296,7 +296,7 @@ class MovingPointsCanvas(QOpenGLWidget):
             self.shader_program["pointTexture"].value = 0
 
         # Render the points
-        # self.update_buffers()
+        self.update_buffers()
         self.vao.render(moderngl.POINTS, vertices=self.num_points)
 
     def load_texture(self, file_path):
