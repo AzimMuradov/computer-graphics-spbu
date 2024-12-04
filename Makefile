@@ -17,6 +17,7 @@ PY_SRCS = main.py $(wildcard frontend/*.py)
 
 # Use GCC by default
 CC = gcc
+CFLAGS = -Wall -pedantic -Wextra -Werror -O3 -fPIC -ffast-math
 
 LIB_SRC = backend/library.c
 LIB_HDR = backend/library.h
@@ -26,7 +27,6 @@ LIB_TARGET = backend/libbackend.so
 LIB_OBJ_TEST = backend/library_test.o
 LIB_TARGET_TEST = backend/libbackend_test.so
 
-CFLAGS = -Wall -pedantic -Wextra -Werror -O3 -fPIC -ffast-math
 
 .PHONY: all
 all: build
@@ -53,15 +53,6 @@ $(LIB_TARGET): $(LIB_OBJ)
 $(LIB_OBJ): $(LIB_SRC)
 	$(CC) -c $(LIB_SRC) $(CFLAGS) -o $(LIB_OBJ)
 
-.PHONY: build-backend-test
-build-backend-test: $(LIB_TARGET_TEST)
-
-$(LIB_TARGET_TEST): $(LIB_OBJ_TEST)
-	$(CC) $(LIB_OBJ_TEST) -shared -o $(LIB_TARGET_TEST)
-
-$(LIB_OBJ_TEST): $(LIB_SRC)
-	$(CC) -c $(LIB_SRC) $(CFLAGS) -DTEST -o $(LIB_OBJ_TEST)
-
 .PHONY: install-deps
 install-deps: $(ACTIVATE)
 
@@ -75,10 +66,6 @@ $(ACTIVATE): requirements.txt
 .PHONY: check
 check: test-backend check-frontend-formatting check-frontend-linting
 
-.PHONY: test-backend
-test-backend: build-backend-test $(PYTEST)
-	$(PYTHON) -m pytest tests
-
 .PHONY: check-frontend-formatting
 check-frontend-formatting: $(BLACK)
 	$(BLACK) --check .
@@ -86,6 +73,19 @@ check-frontend-formatting: $(BLACK)
 .PHONY: check-frontend-linting
 check-frontend-linting: $(MYPY)
 	$(MYPY) .
+
+.PHONY: test
+test-backend: build-backend-test $(PYTEST)
+	$(PYTHON) -m pytest tests
+
+.PHONY: build-backend-test
+build-backend-test: $(LIB_TARGET_TEST)
+
+$(LIB_TARGET_TEST): $(LIB_OBJ_TEST)
+	$(CC) $(LIB_OBJ_TEST) -shared -o $(LIB_TARGET_TEST)
+
+$(LIB_OBJ_TEST): $(LIB_SRC)
+	$(CC) -c $(LIB_SRC) $(CFLAGS) -DTEST -o $(LIB_OBJ_TEST)
 
 
 # Format application

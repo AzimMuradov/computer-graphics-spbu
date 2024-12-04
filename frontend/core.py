@@ -1,7 +1,6 @@
 import argparse
 import sys
 from typing import *
-import platform
 
 from PyQt6.QtGui import QSurfaceFormat
 from PyQt6.QtCore import Qt
@@ -13,7 +12,7 @@ from frontend.ui import MainWindow, MovingPointsCanvas, qt_surface_format
 
 
 class Backend(Protocol):
-    def drunk_cats_configure(self, fight_radiu: float, hiss_radius: float): ...
+    def drunk_cats_configure(self, fight_radius: float, hiss_radius: float): ...
 
     def drunk_cats_calculate_states(
         self,
@@ -25,6 +24,8 @@ class Backend(Protocol):
     ): ...
 
     def drunk_cats_free_states(self, states: Any): ...
+
+
 class Core:
     def __init__(self):
         self.ffi = FFI()
@@ -81,8 +82,8 @@ class Core:
         result_ptr = self.lib.drunk_cats_calculate_states(
             num_points, points_ptr, width, height, self.global_scale
         )
-        # Convert the returned C array to a numpy array
 
+        # Convert the returned C array to a numpy array
         buffer: Any = self.ffi.buffer(result_ptr, num_points * self.ffi.sizeof("int"))
         result = np.frombuffer(
             buffer=buffer,
