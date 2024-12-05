@@ -10,9 +10,9 @@
 static double drunk_cats_g_fight_radius = 0.0;
 static double drunk_cats_g_hiss_radius = 0.0;
 
-// static const int CAT_MOOD_CALM = 0;
-static const int CAT_MOOD_HISSES = 1;
-static const int CAT_MOOD_WANTS_TO_FIGHT = 2;
+// static const int CAT_STATE_CALM = 0;
+static const int CAT_STATE_HISSES = 1;
+static const int CAT_STATE_WANTS_TO_FIGHT = 2;
 
 
 static double *recalculate_positions(
@@ -38,10 +38,9 @@ int *drunk_cats_calculate_states(
     const int window_height,
     const float scale
 ) {
-    double *positions = recalculate_positions(cat_count, cat_positions, window_width, window_height, scale);
-    int *moods = calloc(cat_count, sizeof(int));
+    int *states = calloc(cat_count, sizeof(int));
 
-    // Recalculate mood data
+    // Recalculate states
 
     struct kdtree *tree = kd_create(2);
 
@@ -50,11 +49,11 @@ int *drunk_cats_calculate_states(
         kd_insert(tree, positions + 2 * i, (void *) i);
     }
 
-    // Calculate "wants to fight" mood
+    // Calculate "wants to fight" states
     for (size_t i = 0; i < cat_count; i++) {
-        const int *mood = &moods[i];
+        const int *state = &states[i];
 
-        if (*mood == CAT_MOOD_WANTS_TO_FIGHT) continue;
+        if (*state == CAT_STATE_WANTS_TO_FIGHT) continue;
 
         struct kdres *fight_cats = kd_nearest_range(tree, positions + 2 * i, drunk_cats_g_fight_radius);
         if (fight_cats == NULL) exit(1);
@@ -62,17 +61,17 @@ int *drunk_cats_calculate_states(
         if (kd_res_size(fight_cats) > 1) {
             for (; !kd_res_end(fight_cats); kd_res_next(fight_cats)) {
                 const size_t fight_cat_i = (size_t) kd_res_item_data(fight_cats);
-                moods[fight_cat_i] = CAT_MOOD_WANTS_TO_FIGHT;
+                states[fight_cat_i] = CAT_STATE_WANTS_TO_FIGHT;
             }
         }
         kd_res_free(fight_cats);
     }
 
-    // Calculate "hisses" mood
+    // Calculate "hisses" states
     for (size_t i = 0; i < cat_count; i++) {
-        int *mood = &moods[i];
+        int *state = &states[i];
 
-        if (*mood == CAT_MOOD_WANTS_TO_FIGHT) continue;
+        if (*state == CAT_STATE_WANTS_TO_FIGHT) continue;
 
         struct kdres *hiss_cats = kd_nearest_range(tree, positions + 2 * i, drunk_cats_g_hiss_radius);
         if (hiss_cats == NULL) exit(1);
@@ -85,7 +84,7 @@ int *drunk_cats_calculate_states(
                 positions[2 * i + 1] - positions[2 * other_cat_i + 1]
             );
             if (rand_ud() <= (drunk_cats_g_fight_radius * drunk_cats_g_fight_radius) / (dist * dist)) {
-                *mood = CAT_MOOD_HISSES;
+                *state = CAT_STATE_HISSES;
                 break;
             }
         }
@@ -96,7 +95,7 @@ int *drunk_cats_calculate_states(
 
     free(positions);
 
-    return moods;
+    return states;
 }
 
 void drunk_cats_free_states(int *states) {
