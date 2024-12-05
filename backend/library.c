@@ -16,14 +16,41 @@ static double drunk_cats_g_fight_radius = 0.0;
 static double drunk_cats_g_hiss_radius = 0.0;
 
 
-static double *recalculate_positions(
+/**
+ * Convert cat positions in the OpenGL coordinate system to the plain flatten coordinates.
+ *
+ * ## Why *plain*?
+ *
+ * Every position `(x, y)` in the OpenGL coordinate system
+ * will be scaled using the given window size and scale.
+ *
+ * ## Why *flatten*?
+ *
+ * The given array `[{x1, y1}, ..., {x_n, y_n}]`
+ * will be restructured to `[x1, y1, ..., x_n, y_n]`.
+ *
+ * @param cat_count Number of cat positions given.
+ * @param cat_positions Array of cat positions in the OpenGL coordinate system.
+ * @param window_width Window width, must be positive.
+ * @param window_height Window height, must be positive.
+ * @param scale Window scale (e.g. 1.0 - no scale, 2.0 - two times scale), must be positive.
+ *
+ * @returns Cat positions as plain flatten coordinates.
+ */
+static double *convert_opengl_to_plain_coordinates(
     size_t cat_count,
-    const Position *cat_positions,
-    int window_width,
-    int window_height,
+    const OpenGlPosition *cat_positions,
+    unsigned int window_width,
+    unsigned int window_height,
     float scale
 );
 
+/**
+ * Generate random unsigned double in the range of `[0.0, 1.0]`.
+ *
+ * @returns By default: random double in `[0.0, 1.0]`,
+ *          or if `TEST` defined: `0.0`.
+ */
 static double rand_ud(void);
 
 
@@ -34,11 +61,15 @@ void drunk_cats_configure(const double fight_radius, const double hiss_radius) {
 
 int *drunk_cats_calculate_states(
     const size_t cat_count,
-    const Position *cat_positions,
-    const int window_width,
-    const int window_height,
+    const OpenGlPosition *cat_positions,
+    const unsigned int window_width,
+    const unsigned int window_height,
     const float scale
 ) {
+    double *positions = convert_opengl_to_plain_coordinates(
+        cat_count, cat_positions,
+        window_width, window_height, scale
+    );
     int *states = calloc(cat_count, sizeof(int));
 
     // Recalculate states
@@ -106,19 +137,19 @@ void drunk_cats_free_states(int *states) {
 
 // Internal
 
-static double *recalculate_positions(
+static double *convert_opengl_to_plain_coordinates(
     const size_t cat_count,
-    const Position *cat_positions,
-    const int window_width,
-    const int window_height,
+    const OpenGlPosition *cat_positions,
+    const unsigned int window_width,
+    const unsigned int window_height,
     const float scale
 ) {
     double *flat_cat_positions = malloc(cat_count * 2 * sizeof(double));
 
     for (size_t i = 0; i < cat_count; i++) {
-        const Position cat_pos = cat_positions[i];
-        flat_cat_positions[2 * i] = (cat_pos.x + 1.0) * window_width * 0.5 * scale;
-        flat_cat_positions[2 * i + 1] = (cat_pos.y + 1.0) * window_height * 0.5 * scale;
+        const OpenGlPosition cat_pos = cat_positions[i];
+        flat_cat_positions[2 * i] = cat_pos.x * 0.5 * window_width * scale;
+        flat_cat_positions[2 * i + 1] = cat_pos.y * 0.5 * window_height * scale;
     }
 
     return flat_cat_positions;
