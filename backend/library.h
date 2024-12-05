@@ -57,7 +57,7 @@ int *drunk_cats_calculate_states(
 );
 
 /**
- * Free memory allocated for the given states.
+ * Free allocated memory for the given states.
  *
  * @param states Pointer to the array of states.
  */
