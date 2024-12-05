@@ -7,12 +7,13 @@
 #include "third-party/kdtree/kdtree.c"
 
 
-static double drunk_cats_g_fight_radius = 0.0;
-static double drunk_cats_g_hiss_radius = 0.0;
-
 // static const int CAT_STATE_CALM = 0;
 static const int CAT_STATE_HISSES = 1;
 static const int CAT_STATE_WANTS_TO_FIGHT = 2;
+
+
+static double drunk_cats_g_fight_radius = 0.0;
+static double drunk_cats_g_hiss_radius = 0.0;
 
 
 static double *recalculate_positions(
