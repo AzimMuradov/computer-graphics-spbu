@@ -19,15 +19,11 @@ static double drunk_cats_g_hiss_radius = 0.0;
 /**
  * Convert cat positions in the OpenGL coordinate system to the plain flatten coordinates.
  *
- * ## Why *plain*?
- *
- * Every position `(x, y)` in the OpenGL coordinate system
+ * Every position `{x, y}` in the OpenGL coordinate system
  * will be scaled using the given window size and scale.
  *
- * ## Why *flatten*?
- *
- * The given array `[{x1, y1}, ..., {x_n, y_n}]`
- * will be restructured to `[x1, y1, ..., x_n, y_n]`.
+ * The given array `[{x_1, y_1}, ..., {x_n, y_n}]`
+ * will be restructured to `[x_1, y_1, ..., x_n, y_n]`.
  *
  * @param cat_count Number of cat positions given.
  * @param cat_positions Array of cat positions in the OpenGL coordinate system.
