@@ -1,6 +1,6 @@
 import argparse
 import sys
-from typing import *
+import platform
 
 from PyQt6.QtGui import QSurfaceFormat
 from PyQt6.QtCore import Qt
