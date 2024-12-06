@@ -1,7 +1,6 @@
 import argparse
 import sys
 from typing import *
-import platform
 
 from PyQt6.QtGui import QSurfaceFormat
 from PyQt6.QtCore import Qt
@@ -13,18 +12,18 @@ from frontend.ui import MainWindow, MovingPointsCanvas, qt_surface_format
 
 
 class Backend(Protocol):
-    def backend_init(self, fight_radius: int, hiss_radius: int): ...
+    def drunk_cats_configure(self, fight_radius: float, hiss_radius: float): ...
 
-    def update_states(
+    def drunk_cats_calculate_states(
         self,
-        num_points: int,
-        points: Any,
-        width: int,
-        height: int,
-        global_scale: float,
-    ): ...
+        cat_count: int,
+        cat_positions: Any,
+        window_width: int,
+        window_height: int,
+        scale: float,
+    ) -> Any: ...
 
-    def free_states(self, states: Any): ...
+    def drunk_cats_free_states(self, states: Any): ...
 
 
 class Core:
@@ -42,14 +41,12 @@ class Core:
                     continue
                 dec += line
             self.ffi.cdef(dec)
-
         self.lib = cast(Backend, self.ffi.dlopen(str(backend_dir / "libbackend.so")))
 
         self.init_parser()
 
         self.args = self.parser.parse_args()
-
-        self.lib.backend_configure(self.args.fight_radius, self.args.hiss_radius)
+        self.lib.drunk_cats_configure(self.args.fight_radius, self.args.hiss_radius)
 
     def main(self):
         QSurfaceFormat.setDefaultFormat(qt_surface_format())
@@ -82,9 +79,10 @@ class Core:
     ) -> np.ndarray:
         points_ptr = self.ffi.cast("OpenGlPosition *", self.ffi.from_buffer(points))
 
-        result_ptr = self.lib.backend_calculate_states(
+        result_ptr = self.lib.drunk_cats_calculate_states(
             num_points, points_ptr, width, height, self.global_scale
         )
+
         # Convert the returned C array to a numpy array
         buffer: Any = self.ffi.buffer(result_ptr, num_points * self.ffi.sizeof("int"))
         result = np.frombuffer(
@@ -92,7 +90,7 @@ class Core:
             dtype=np.int32,
         ).copy()
 
-        self.lib.backend_free_states(result_ptr)
+        self.lib.drunk_cats_free_states(result_ptr)
 
         return result
 

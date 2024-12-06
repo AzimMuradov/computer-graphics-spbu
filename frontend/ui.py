@@ -252,7 +252,6 @@ class MovingPointsCanvas(QOpenGLWidget):
         # Load texture if an image path is provided
         if self.use_texture:
             self.texture = self.load_texture(self.image_path)
-
         # Initialize buffers
         self.init_buffers()
 
@@ -294,9 +293,8 @@ class MovingPointsCanvas(QOpenGLWidget):
         if self.use_texture:
             self.texture.use(0)
             self.shader_program["pointTexture"].value = 0
-
         # Render the points
-        # self.update_buffers()
+        self.update_buffers()
         self.vao.render(moderngl.POINTS, vertices=self.num_points)
 
     def load_texture(self, file_path):
@@ -384,18 +382,21 @@ class MainWindow(QMainWindow):
         )
 
         # Number of points control
+
         self.num_points_label = QLabel("Number of Points:")
         self.num_points_input = QSpinBox()
         self.num_points_input.setRange(1, 1000000)
         self.num_points_input.setValue(num_points)
 
         # Speed control slider
+
         self.speed_slider = QSlider(Qt.Orientation.Horizontal)
         self.speed_slider.setRange(1, 1000)
         self.speed_slider.setValue(200)  # Set default speed factor to 1.0 (scaled)
         self.speed_label = QLabel("Speed:")
 
         # Layout for controls
+
         control_layout = QVBoxLayout()
         control_layout.addWidget(self.speed_label)
         control_layout.addWidget(self.speed_slider)
@@ -409,12 +410,14 @@ class MainWindow(QMainWindow):
         # self.canvas.setFocus()
 
         # Connect with core
+
         self.speed_slider.valueChanged.connect(partial(self.core.update_speed, self))
         self.num_points_input.valueChanged.connect(
             partial(self.core.update_num_points, self)
         )
 
         # Main widget setup
+
         main_widget = QWidget()
         main_widget.setLayout(control_layout)
         self.setCentralWidget(main_widget)
@@ -423,5 +426,6 @@ class MainWindow(QMainWindow):
         self.canvas.update_num_points(value)
 
     # Exponentially scale the speed factor
+
     def update_speed(self, value: int):
         self.canvas.speed_factor = 1.5 ** ((value - 200) / 20)

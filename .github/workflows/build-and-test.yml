@@ -28,9 +28,9 @@ jobs:
         run: make build-backend
       - name: "Install app dependencies"
         run: make install-deps
-      - name: "Test backend"
-        run: make test-backend
       - name: "Check frontend formating with black"
         run: make check-frontend-formatting
       - name: "Check frontend with mypy"
         run: make check-frontend-linting
+      - name: "Test app"
+        run: make test
