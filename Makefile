@@ -64,7 +64,7 @@ $(ACTIVATE): requirements.txt
 # Check application
 
 .PHONY: check
-check: test-backend check-frontend-formatting check-frontend-linting
+check: check-frontend-formatting check-frontend-linting test
 
 .PHONY: check-frontend-formatting
 check-frontend-formatting: $(BLACK)
@@ -75,7 +75,7 @@ check-frontend-linting: $(MYPY)
 	$(MYPY) .
 
 .PHONY: test
-test-backend: build-backend-test $(PYTEST)
+test: build-backend-test $(PYTEST)
 	$(PYTHON) -m pytest tests
 
 .PHONY: build-backend-test

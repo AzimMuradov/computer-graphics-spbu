@@ -12,7 +12,7 @@ from frontend.ui import MainWindow, MovingPointsCanvas, qt_surface_format
 
 
 class Backend(Protocol):
-    def drunk_cats_configure(self, fight_radius: float, hiss_radius: float): ...
+    def drunk_cats_configure(self, fight_radius: float, hiss_radius: float) -> Any: ...
 
     def drunk_cats_calculate_states(
         self,
@@ -21,9 +21,9 @@ class Backend(Protocol):
         window_width: int,
         window_height: int,
         scale: float,
-    ): ...
+    ) -> Any: ...
 
-    def drunk_cats_free_states(self, states: Any): ...
+    def drunk_cats_free_states(self, states: Any) -> Any: ...
 
 
 class Core:
