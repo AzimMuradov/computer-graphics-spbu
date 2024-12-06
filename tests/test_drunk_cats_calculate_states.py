@@ -31,7 +31,7 @@ def backend():
 
 
 def create_positions(positions):
-    return ffi.cast("Position *", ffi.from_buffer(np.array(positions)))
+    return ffi.cast("OpenGlPosition *", ffi.from_buffer(np.array(positions)))
 
 
 def test_single_cat(backend):

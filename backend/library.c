@@ -7,22 +7,46 @@
 #include "third-party/kdtree/kdtree.c"
 
 
+// static const int CAT_STATE_CALM = 0;
+static const int CAT_STATE_HISSES = 1;
+static const int CAT_STATE_WANTS_TO_FIGHT = 2;
+
+
 static double drunk_cats_g_fight_radius = 0.0;
 static double drunk_cats_g_hiss_radius = 0.0;
 
-// static const int CAT_MOOD_CALM = 0;
-static const int CAT_MOOD_HISSES = 1;
-static const int CAT_MOOD_WANTS_TO_FIGHT = 2;
 
-
-static double *recalculate_positions(
+/**
+ * Convert cat positions in the OpenGL coordinate system to the plain flatten coordinates.
+ *
+ * Every position `{x, y}` in the OpenGL coordinate system
+ * will be scaled using the given window size and scale.
+ *
+ * The given array `[{x_1, y_1}, ..., {x_n, y_n}]`
+ * will be restructured to `[x_1, y_1, ..., x_n, y_n]`.
+ *
+ * @param cat_count Number of cat positions given.
+ * @param cat_positions Array of cat positions in the OpenGL coordinate system.
+ * @param window_width Window width, must be positive.
+ * @param window_height Window height, must be positive.
+ * @param scale Window scale (e.g. 1.0 - no scale, 2.0 - two times scale), must be positive.
+ *
+ * @returns Cat positions as plain flatten coordinates.
+ */
+static double *convert_opengl_to_plain_coordinates(
     size_t cat_count,
-    const Position *cat_positions,
-    int window_width,
-    int window_height,
+    const OpenGlPosition *cat_positions,
+    unsigned int window_width,
+    unsigned int window_height,
     float scale
 );
 
+/**
+ * Generate random unsigned double in the range of `[0.0, 1.0]`.
+ *
+ * @returns By default: random double in `[0.0, 1.0]`,
+ *          or if `TEST` defined: `0.0`.
+ */
 static double rand_ud(void);
 
 
@@ -33,15 +57,18 @@ void drunk_cats_configure(const double fight_radius, const double hiss_radius) {
 
 int *drunk_cats_calculate_states(
     const size_t cat_count,
-    const Position *cat_positions,
-    const int window_width,
-    const int window_height,
+    const OpenGlPosition *cat_positions,
+    const unsigned int window_width,
+    const unsigned int window_height,
     const float scale
 ) {
-    double *positions = recalculate_positions(cat_count, cat_positions, window_width, window_height, scale);
-    int *moods = calloc(cat_count, sizeof(int));
+    double *positions = convert_opengl_to_plain_coordinates(
+        cat_count, cat_positions,
+        window_width, window_height, scale
+    );
+    int *states = calloc(cat_count, sizeof(int));
 
-    // Recalculate mood data
+    // Recalculate states
 
     struct kdtree *tree = kd_create(2);
 
@@ -50,11 +77,11 @@ int *drunk_cats_calculate_states(
         kd_insert(tree, positions + 2 * i, (void *) i);
     }
 
-    // Calculate "wants to fight" mood
+    // Calculate "wants to fight" states
     for (size_t i = 0; i < cat_count; i++) {
-        const int *mood = &moods[i];
+        const int *state = &states[i];
 
-        if (*mood == CAT_MOOD_WANTS_TO_FIGHT) continue;
+        if (*state == CAT_STATE_WANTS_TO_FIGHT) continue;
 
         struct kdres *fight_cats = kd_nearest_range(tree, positions + 2 * i, drunk_cats_g_fight_radius);
         if (fight_cats == NULL) exit(1);
@@ -62,17 +89,17 @@ int *drunk_cats_calculate_states(
         if (kd_res_size(fight_cats) > 1) {
             for (; !kd_res_end(fight_cats); kd_res_next(fight_cats)) {
                 const size_t fight_cat_i = (size_t) kd_res_item_data(fight_cats);
-                moods[fight_cat_i] = CAT_MOOD_WANTS_TO_FIGHT;
+                states[fight_cat_i] = CAT_STATE_WANTS_TO_FIGHT;
             }
         }
         kd_res_free(fight_cats);
     }
 
-    // Calculate "hisses" mood
+    // Calculate "hisses" states
     for (size_t i = 0; i < cat_count; i++) {
-        int *mood = &moods[i];
+        int *state = &states[i];
 
-        if (*mood == CAT_MOOD_WANTS_TO_FIGHT) continue;
+        if (*state == CAT_STATE_WANTS_TO_FIGHT) continue;
 
         struct kdres *hiss_cats = kd_nearest_range(tree, positions + 2 * i, drunk_cats_g_hiss_radius);
         if (hiss_cats == NULL) exit(1);
@@ -85,7 +112,7 @@ int *drunk_cats_calculate_states(
                 positions[2 * i + 1] - positions[2 * other_cat_i + 1]
             );
             if (rand_ud() <= (drunk_cats_g_fight_radius * drunk_cats_g_fight_radius) / (dist * dist)) {
-                *mood = CAT_MOOD_HISSES;
+                *state = CAT_STATE_HISSES;
                 break;
             }
         }
@@ -96,7 +123,7 @@ int *drunk_cats_calculate_states(
 
     free(positions);
 
-    return moods;
+    return states;
 }
 
 void drunk_cats_free_states(int *states) {
@@ -106,19 +133,19 @@ void drunk_cats_free_states(int *states) {
 
 // Internal
 
-static double *recalculate_positions(
+static double *convert_opengl_to_plain_coordinates(
     const size_t cat_count,
-    const Position *cat_positions,
-    const int window_width,
-    const int window_height,
+    const OpenGlPosition *cat_positions,
+    const unsigned int window_width,
+    const unsigned int window_height,
     const float scale
 ) {
     double *flat_cat_positions = malloc(cat_count * 2 * sizeof(double));
 
     for (size_t i = 0; i < cat_count; i++) {
-        const Position cat_pos = cat_positions[i];
-        flat_cat_positions[2 * i] = (cat_pos.x + 1.0) * window_width * 0.5 * scale;
-        flat_cat_positions[2 * i + 1] = (cat_pos.y + 1.0) * window_height * 0.5 * scale;
+        const OpenGlPosition cat_pos = cat_positions[i];
+        flat_cat_positions[2 * i] = cat_pos.x * 0.5 * window_width * scale;
+        flat_cat_positions[2 * i + 1] = cat_pos.y * 0.5 * window_height * scale;
     }
 
     return flat_cat_positions;

@@ -77,7 +77,7 @@ class Core:
     def update_states(
         self, num_points: int, points: np.ndarray, width: int, height: int
     ) -> np.ndarray:
-        points_ptr = self.ffi.cast("Position *", self.ffi.from_buffer(points))
+        points_ptr = self.ffi.cast("OpenGlPosition *", self.ffi.from_buffer(points))
 
         result_ptr = self.lib.drunk_cats_calculate_states(
             num_points, points_ptr, width, height, self.global_scale
