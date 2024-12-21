@@ -10,6 +10,10 @@ from PyQt6.QtWidgets import QApplication
 
 from frontend.ui import MainWindow, MovingPointsCanvas, qt_surface_format
 
+class CustomError(Exception):
+    def __init__(self, message):
+        super().__init__(message)
+
 
 class Backend(Protocol):
     def drunk_cats_configure(self, fight_radius: float, hiss_radius: float): ...
