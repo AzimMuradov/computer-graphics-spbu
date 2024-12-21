@@ -10,7 +10,6 @@ from pathlib import Path
 backend_dir = Path(__file__).parent.parent / "backend"
 shared_library_path = str(backend_dir / "libbackend.so")
 
-# 1. no .so library built
 def test_no_backend_library_built():
     with pytest.raises(CustomError):
         original_dir = os.path.dirname(shared_library_path)
