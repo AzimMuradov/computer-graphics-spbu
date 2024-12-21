@@ -23,12 +23,9 @@ def test_no_backend_library_built():
                 temp_file_path = os.path.join(temp_dir, os.path.basename(shared_library_path))
                 shutil.move(shared_library_path, temp_file_path)
 
-            try:
-                Core()
-            except OSError as err:
-                # TODO: custom error expected with some proper message
-                #       (eg. 'Shared library must be built before running application')
-                raise AssertionError("Expected custom error class with proper message, but got ", err)
+            # TODO: custom error expected with some proper message
+            #       (eg. 'Shared library must be built before running application')
+            core = Core()
         finally:
             # move .so back to its dir
             if (existed):
@@ -55,3 +52,9 @@ def test_passed_hiss_less_than_fight_range():
         
         # TODO: expected a check for `fight_radius < hiss_radius` which is stated in code comments, but no custom exception thrown
         backend.drunk_cats_configure(fight_radius, hiss_radius)
+
+def test_points_generation():
+    with pytest.raises(CustomError):
+        core = Core()
+        # TODO: expected proper check for passed parameter
+        core.generate_points(count=-1, zoom_factor=1.0)
