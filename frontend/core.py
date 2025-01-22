@@ -1,14 +1,20 @@
 import argparse
+import logging
 import sys
 from typing import *
 
-from PyQt6.QtGui import QSurfaceFormat
-from PyQt6.QtCore import Qt
 import numpy as np
 from cffi import FFI
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QSurfaceFormat
 from PyQt6.QtWidgets import QApplication
 
 from frontend.ui import MainWindow, MovingPointsCanvas, qt_surface_format
+
+
+# Set up logger
+logging.basicConfig()
+logger = logging.getLogger()
 
 
 class Backend(Protocol):
@@ -44,8 +50,10 @@ class Core:
         self.lib = cast(Backend, self.ffi.dlopen(str(backend_dir / "libbackend.so")))
 
         self.init_parser()
-
         self.args = self.parser.parse_args()
+
+        if self.args.debug:
+            logger.setLevel(logging.DEBUG)
         self.lib.drunk_cats_configure(self.args.fight_radius, self.args.hiss_radius)
 
     def main(self):
@@ -91,6 +99,11 @@ class Core:
         ).copy()
 
         self.lib.drunk_cats_free_states(result_ptr)
+
+        if logger.isEnabledFor(logging.DEBUG):
+            mapping = {0: "calm", 1: "hisses", 2: "wants to fight"}
+            log_obj = {i: mapping[state] for i, state in enumerate(result)}
+            logger.debug(str(log_obj))
 
         return result
 
@@ -152,4 +165,10 @@ class Core:
             type=int,
             default=800,
             help="Height of the window",
+        )
+        self.parser.add_argument(
+            "--debug",
+            type=bool,
+            default=False,
+            help="Enable debug messages",
         )
