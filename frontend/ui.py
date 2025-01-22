@@ -154,6 +154,7 @@ class UpdateStatesWorker(QObject):
 class MovingPointsCanvas(QOpenGLWidget):
 
     FPS = 100
+    follow_mode_changed = pyqtSignal(bool)
 
     def __init__(
         self,
@@ -421,23 +422,21 @@ class MovingPointsCanvas(QOpenGLWidget):
         if event is None:
             return
         
-        
         click_x = event.position().x()
         click_y = event.position().y()
-
 
         world_x = (click_x / self.width() * 2 - 1) / self.zoom_factor - self.pan_offset[0]
         world_y = (click_y / self.height() * 2 - 1) / self.zoom_factor - self.pan_offset[1]
 
-
         distances = np.linalg.norm(self.points - np.array([world_x, -world_y]), axis=1)
         nearest_cat_id = np.argmin(distances)
 
-
         if distances[nearest_cat_id] < self.follow_radius:
             self.followed_cat_id = nearest_cat_id
+            self.follow_mode_changed.emit(True)
         else:
             self.followed_cat_id = None
+            self.follow_mode_changed.emit(False)
     
     def keyPressEvent(self, event):
         if event is None:
@@ -450,6 +449,7 @@ class MovingPointsCanvas(QOpenGLWidget):
         self.followed_cat_id = None
         self.zoom_factor = 1.0
         self.pan_offset = np.array([0.0, 0.0], dtype=np.float64)
+        self.follow_mode_changed.emit(False)
         self.update()
 
 class GhostWidget(QWidget):
@@ -532,6 +532,10 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(main_widget)
 
         self.canvas.setFocus()  # Set focus on canvas at startup
+        self.canvas.follow_mode_changed.connect(self.on_follow_mode_changed)
+
+    def on_follow_mode_changed(self, is_following: bool):
+        self.num_points_input.setEnabled(not is_following)
 
     def update_num_points(self, value: int):
         self.canvas.update_num_points(value)
