@@ -457,7 +457,7 @@ class MovingPointsCanvas(QOpenGLWidget):
         ) / self.zoom_factor - self.pan_offset[1]
 
         distances = np.linalg.norm(self.points - np.array([world_x, -world_y]), axis=1)
-        nearest_cat_id = np.argmin(distances)
+        nearest_cat_id = int(np.argmin(distances))
 
         if distances[nearest_cat_id] < self.follow_radius:
             self.followed_cat_id = nearest_cat_id
