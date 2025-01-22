@@ -65,7 +65,7 @@ flat out int fragIndex;
 uniform float pointRadius;
 uniform float zoom;
 uniform vec2 panOffset;
-uniform int highlightedIndex; // Индекс выделенной точки
+uniform int highlightedIndex; // Index of the highlighted point
 
 void main() {
     gl_PointSize = pointRadius * 2.0 * zoom;
@@ -84,7 +84,7 @@ flat in int fragIndex;
 flat in int fragState; // State passed from vertex shader
 uniform sampler2D pointTexture;
 uniform bool useTexture;
-uniform int highlightedIndex;  // Индекс выделенной точки
+uniform int highlightedIndex;  // Index of follo
 out vec4 fragColor;
 
 float star(vec2 p, float r, int n, float m) {
@@ -120,10 +120,9 @@ void main() {
         }
 
         if (fragIndex == highlightedIndex) {
-            // Создаем звезду
-            float s = star(coord * 1.5, 0.3, 5, 3.0); // Параметры: позиция, размер, количество лучей, острота
-            if (s < 0.0) { // Если точка внутри звезды
-                fragColor = vec4(1.0, 1.0, 1.0, 1.0); // Белая звезда
+            float s = star(coord * 1.5, 0.3, 5, 3.0);
+            if (s < 0.0) {
+                fragColor = vec4(1.0, 1.0, 1.0, 1.0); // White star
             }
         }
     }
@@ -211,11 +210,10 @@ class MovingPointsCanvas(QOpenGLWidget):
         self.timer.start(1)
         self.timer.timeout.connect(self.update_positions)
 
-        # 
         self.followed_cat_id : int | None = None
         self.follow_radius : float = 0.5
 
-        self.setFocusPolicy(Qt.FocusPolicy.ClickFocus)  # Виджет получает фокус при клике
+        self.setFocusPolicy(Qt.FocusPolicy.ClickFocus)  # Widget receives focus when clicked
 
     def update_deltas(self):
         self.deltas = self.core.generate_deltas(
@@ -265,18 +263,16 @@ class MovingPointsCanvas(QOpenGLWidget):
         interpolation_speed = 1.0 / self.FPS
         self.points += self.deltas * interpolation_speed
 
-        # Если включена слежка, центрируем камеру на выбранном коте
+        # If tracking is enabled, center the camera on the selected cat
         if self.followed_cat_id is not None:
             followed_cat_pos  = self.points[self.followed_cat_id]
 
-            # Определяем целевое положение камеры с небольшим отставанием
-            smoothness = 0.1  # Коэффициент плавности (меньше = плавнее)
+            smoothness = 0.1  # Smoothness coefficient
             
-            # Вычисляем желаемое положение камеры
             target_x = -followed_cat_pos[0]
             target_y = -followed_cat_pos[1]
             
-            # Плавно перемещаем камеру к целевой позиции
+            # Smoothly move camera to target position
             self.pan_offset[0] = self.pan_offset[0] * (1 - smoothness) + target_x * smoothness
             self.pan_offset[1] = self.pan_offset[1] * (1 - smoothness) + target_y * smoothness
 
@@ -318,7 +314,7 @@ class MovingPointsCanvas(QOpenGLWidget):
         self.state_buffer = self.ctx.buffer(self.states.astype("i4").tobytes())
 
         indices = np.arange(len(self.points), dtype=np.int32)
-        self.index_buffer = self.ctx.buffer(indices.astype("i4").tobytes())  # Индексы
+        self.index_buffer = self.ctx.buffer(indices.astype("i4").tobytes())
 
         # Create Vertex Array Object (VAO)
         self.vao = self.ctx.vertex_array(
@@ -535,7 +531,7 @@ class MainWindow(QMainWindow):
         main_widget.setLayout(control_layout)
         self.setCentralWidget(main_widget)
 
-        self.canvas.setFocus()  # Установить фокус на canvas при запуске
+        self.canvas.setFocus()  # Set focus on canvas at startup
 
     def update_num_points(self, value: int):
         self.canvas.update_num_points(value)
