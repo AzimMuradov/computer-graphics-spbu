@@ -467,7 +467,7 @@ class MovingPointsCanvas(QOpenGLWidget):
     def keyPressEvent(self, event):
         if event is None:
             return
-        if event.key() == Qt.Key.Key_F:
+        if event.nativeVirtualKey() == 0x46: # 0x46 - is the key code for F
             self.stop_following()
             self.update()
 
