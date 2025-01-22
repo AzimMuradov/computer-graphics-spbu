@@ -54,6 +54,7 @@ class Core(Protocol):
 
 
 # Vertex shader code with zoom and pan transformations
+
 vertex_shader_code = """
 #version 410 core
 
@@ -75,6 +76,7 @@ void main() {
 }
 """
 # Fragment shader code to sample from texture or set color
+
 fragment_shader_code = """
 #version 410 core
 
@@ -129,6 +131,8 @@ void main() {
 
 
 # Worker class to handle the heavy computation
+
+
 class UpdateStatesWorker(QObject):
     finished = pyqtSignal(np.ndarray)  # Signal to return the result
 
@@ -189,14 +193,17 @@ class MovingPointsCanvas(QOpenGLWidget):
         # self.setFocusProxy(self.handler)
 
         # Generate random points and directions
+
         self.points = self.core.generate_points(self.num_points, self.zoom_factor)
         self.states = np.zeros(self.num_points, dtype=int)
 
         # # Timer for updating points
+
         self.timer = QTimer()
         self.core_thread = QThread(parent=self)
 
         # # Initial target positions as current positions
+
         self.update_deltas()
         self.target_update_timer = QTimer()
         self.state_update_timer = QTimer()
@@ -209,10 +216,12 @@ class MovingPointsCanvas(QOpenGLWidget):
         self.timer.start(1)
         self.timer.timeout.connect(self.update_positions)
 
-        self.followed_cat_id : int | None = None
-        self.follow_radius : float = 0.5
+        self.followed_cat_id: int | None = None
+        self.follow_radius: float = 0.5
 
-        self.setFocusPolicy(Qt.FocusPolicy.ClickFocus)  # Widget receives focus when clicked
+        self.setFocusPolicy(
+            Qt.FocusPolicy.ClickFocus
+        )  # Widget receives focus when clicked
 
     def update_deltas(self):
         self.deltas = self.core.generate_deltas(
@@ -221,6 +230,7 @@ class MovingPointsCanvas(QOpenGLWidget):
 
     def update_states(self):
         # Use a worker thread for the heavy computation
+
         if self.is_updating_states:
             return  # Skip if a thread is already running
         self.is_updating_states = True  # Mark as running
@@ -231,6 +241,7 @@ class MovingPointsCanvas(QOpenGLWidget):
         self.worker.moveToThread(self.core_thread)
 
         # Connect signals and slots
+
         self.core_thread.started.connect(self.worker.run)
         self.worker.finished.connect(self.handle_states_update)
         self.worker.finished.connect(self.core_thread.quit)
@@ -238,6 +249,7 @@ class MovingPointsCanvas(QOpenGLWidget):
         self.core_thread.finished.connect(self.core_thread.deleteLater)
         self.worker.finished.connect(self.reset_update_flag)
         # Start the thread
+
         self.core_thread.start()
 
     def reset_update_flag(self):
@@ -246,6 +258,7 @@ class MovingPointsCanvas(QOpenGLWidget):
 
     def handle_states_update(self, new_states: np.ndarray):
         # Update states in the main thread
+
         self.states = new_states
 
     def update_num_points(self, num_points: int):
@@ -263,21 +276,27 @@ class MovingPointsCanvas(QOpenGLWidget):
         self.points += self.deltas * interpolation_speed
 
         # If tracking is enabled, center the camera on the selected cat
+
         if self.followed_cat_id is not None:
-            followed_cat_pos  = self.points[self.followed_cat_id]
+            followed_cat_pos = self.points[self.followed_cat_id]
 
             smoothness = 0.1  # Smoothness coefficient
-            
+
             target_x = -followed_cat_pos[0]
             target_y = -followed_cat_pos[1]
-            
+
             # Smoothly move camera to target position
-            self.pan_offset[0] = self.pan_offset[0] * (1 - smoothness) + target_x * smoothness
-            self.pan_offset[1] = self.pan_offset[1] * (1 - smoothness) + target_y * smoothness
+
+            self.pan_offset[0] = (
+                self.pan_offset[0] * (1 - smoothness) + target_x * smoothness
+            )
+            self.pan_offset[1] = (
+                self.pan_offset[1] * (1 - smoothness) + target_y * smoothness
+            )
 
             self.zoom_factor = 3.00 / self.follow_radius
-
         # Update VBO and state buffer with new data
+
         if len(self.points) == len(self.states):
             self.vbo.write(self.points.astype("f4").tobytes())
             self.state_buffer.write(self.states.astype("i4").tobytes())
@@ -294,34 +313,40 @@ class MovingPointsCanvas(QOpenGLWidget):
         self.index_buffer = self.ctx.buffer(self.indices.tobytes())
 
         # Compile shaders and create program
+
         self.shader_program = self.ctx.program(
             vertex_shader=vertex_shader_code,
             fragment_shader=fragment_shader_code,
         )
 
         # Load texture if an image path is provided
+
         if self.use_texture:
             self.texture = self.load_texture(self.image_path)
         # Initialize buffers
+
         self.init_buffers()
 
     def init_buffers(self):
         # Create Vertex Buffer Object (VBO) for positions
+
         self.vbo = self.ctx.buffer(self.points.astype("f4").tobytes())
 
         # Create a Buffer for states
+
         self.state_buffer = self.ctx.buffer(self.states.astype("i4").tobytes())
 
         indices = np.arange(len(self.points), dtype=np.int32)
         self.index_buffer = self.ctx.buffer(indices.astype("i4").tobytes())
 
         # Create Vertex Array Object (VAO)
+
         self.vao = self.ctx.vertex_array(
             self.shader_program,
             [
                 (self.vbo, "2f", "position"),  # Bind position attribute
                 (self.state_buffer, "1i", "state"),  # Bind state attribute
-                (self.index_buffer, "1i", "index")
+                (self.index_buffer, "1i", "index"),
             ],
         )
 
@@ -338,6 +363,7 @@ class MovingPointsCanvas(QOpenGLWidget):
         self.fb.use()
 
         # Set shader uniforms
+
         self.shader_program["pointRadius"].value = self.point_radius
         self.shader_program["zoom"].value = float(self.zoom_factor)
         self.shader_program["panOffset"].value = tuple(self.pan_offset)
@@ -347,10 +373,10 @@ class MovingPointsCanvas(QOpenGLWidget):
         )
 
         # Bind the texture if used
+
         if self.use_texture:
             self.texture.use(0)
             self.shader_program["pointTexture"].value = 0
-
         if self.followed_cat_id is not None:
             followed_cat_pos = self.points[self.followed_cat_id]
             distances = np.linalg.norm(self.points - followed_cat_pos, axis=1)
@@ -359,11 +385,11 @@ class MovingPointsCanvas(QOpenGLWidget):
             visible_states = self.states[visible_indices]
         else:
             visible_points = self.points
-            visible_states = self.states 
-
+            visible_states = self.states
         self.vbo.write(visible_points.astype("f4").tobytes())
         self.state_buffer.write(visible_states.astype("i4").tobytes())
         # Render the points
+
         self.update_buffers()
         self.vao.render(moderngl.POINTS, vertices=self.num_points)
 
@@ -384,6 +410,7 @@ class MovingPointsCanvas(QOpenGLWidget):
 
     def wheelEvent(self, event: QWheelEvent | None):
         # Zoom in/out with the mouse wheel
+
         if event is None:
             return
         self.zoom_factor *= 1.1 if event.angleDelta().y() > 0 else 0.9
@@ -400,10 +427,12 @@ class MovingPointsCanvas(QOpenGLWidget):
             return
         if self.mouse_dragging:
             # Calculate movement difference
+
             dx = (event.position().x() - self.last_mouse_pos.x()) / self.width()  # type: ignore[attr-defined]
             dy = (event.position().y() - self.last_mouse_pos.y()) / self.height()  # type: ignore[attr-defined]
 
             # Update pan offset, scaled by zoom factor
+
             self.pan_offset[0] += dx / self.zoom_factor
             self.pan_offset[1] -= dy / self.zoom_factor
             self.last_mouse_pos = event.position()
@@ -415,12 +444,15 @@ class MovingPointsCanvas(QOpenGLWidget):
     def mouseDoubleClickEvent(self, event):
         if event is None:
             return
-        
         click_x = event.position().x()
         click_y = event.position().y()
 
-        world_x = (click_x / self.width() * 2 - 1) / self.zoom_factor - self.pan_offset[0]
-        world_y = (click_y / self.height() * 2 - 1) / self.zoom_factor - self.pan_offset[1]
+        world_x = (click_x / self.width() * 2 - 1) / self.zoom_factor - self.pan_offset[
+            0
+        ]
+        world_y = (
+            click_y / self.height() * 2 - 1
+        ) / self.zoom_factor - self.pan_offset[1]
 
         distances = np.linalg.norm(self.points - np.array([world_x, -world_y]), axis=1)
         nearest_cat_id = np.argmin(distances)
@@ -431,20 +463,21 @@ class MovingPointsCanvas(QOpenGLWidget):
         else:
             self.followed_cat_id = None
             self.follow_mode_changed.emit(False)
-    
+
     def keyPressEvent(self, event):
         if event is None:
             return
         if event.key() == Qt.Key.Key_F:
-            self.stop_following()     
-            self.update()   
-    
+            self.stop_following()
+            self.update()
+
     def stop_following(self):
         self.followed_cat_id = None
         self.zoom_factor = 1.0
         self.pan_offset = np.array([0.0, 0.0], dtype=np.float64)
         self.follow_mode_changed.emit(False)
         self.update()
+
 
 class GhostWidget(QWidget):
     def __init__(self, parent: QWidget | None = None):
