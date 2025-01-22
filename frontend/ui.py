@@ -59,25 +59,34 @@ vertex_shader_code = """
 
 in vec2 position; // Point position
 in int state; // Point state (0, 1, or 2)
+in int index;
 flat out int fragState; // Pass state to fragment shader
 uniform float pointRadius;
 uniform float zoom;
 uniform vec2 panOffset;
+uniform int highlightedIndex; // Индекс выделенной точки
 
 void main() {
     gl_PointSize = pointRadius * 2.0 * zoom;
+
+    if (index == highlightedIndex) {
+        gl_PointSize *= 1.5;
+    }
+
     gl_Position = vec4((position + panOffset) * zoom, 0.0, 1.0); // Output requires vec4(float)
     fragState = state; // Pass state to fragment shader
 }
 """
-
+# (position + panOffset) * zoom
 # Fragment shader code to sample from texture or set color
 fragment_shader_code = """
 #version 410 core
 
 flat in int fragState; // State passed from vertex shader
+flat in int index;
 uniform sampler2D pointTexture;
 uniform bool useTexture;
+uniform int highlightedIndex;  // Индекс выделенной точки
 out vec4 fragColor;
 
 void main() {
@@ -92,12 +101,16 @@ void main() {
             }
 
         // Color based on state
-        if (fragState == 0) {
-            fragColor = vec4(0.0, 0.7, 1.0, 1.0); // Blue
-        } else if (fragState == 1) {
-            fragColor = vec4(0.0, 1.0, 0.0, 1.0); // Green
-        } else if (fragState == 2) {
-            fragColor = vec4(1.0, 0.0, 0.0, 1.0); // Red
+        if (index == highlightedIndex) {
+            fragColor = vec4(1.0, 1.0, 0.0, 1.0);  // Желтый цвет для выделенной точки
+        } else {
+            if (fragState == 0) {
+                fragColor = vec4(0.0, 0.7, 1.0, 1.0); // Blue
+            } else if (fragState == 1) {
+                fragColor = vec4(0.0, 1.0, 0.0, 1.0); // Green
+            } else if (fragState == 2) {
+                fragColor = vec4(1.0, 0.0, 0.0, 1.0); // Red
+            }   
         }
     }
 }
@@ -184,6 +197,12 @@ class MovingPointsCanvas(QOpenGLWidget):
         self.timer.start(1)
         self.timer.timeout.connect(self.update_positions)
 
+        # 
+        self.followed_cat_id : int | None = None
+        self.follow_radius : float = 0.5
+
+        self.setFocusPolicy(Qt.FocusPolicy.ClickFocus)  # Виджет получает фокус при клике
+
     def update_deltas(self):
         self.deltas = self.core.generate_deltas(
             self, self.num_points, self.speed_factor
@@ -230,6 +249,13 @@ class MovingPointsCanvas(QOpenGLWidget):
         interpolation_speed = 1.0 / self.FPS
         self.points += self.deltas * interpolation_speed
 
+        # Если включена слежка, центрируем камеру на выбранном коте
+        if self.followed_cat_id is not None:
+            followed_cat_pos  = self.points[self.followed_cat_id]
+            self.pan_offset[0] = -followed_cat_pos[0]
+            self.pan_offset[1] = -followed_cat_pos[1]
+            #self.zoom_factor = 1.0 / self.follow_radius
+
         # Update VBO and state buffer with new data
         if len(self.points) == len(self.states):
             self.vbo.write(self.points.astype("f4").tobytes())
@@ -242,6 +268,9 @@ class MovingPointsCanvas(QOpenGLWidget):
         self.ctx.enable(moderngl.BLEND)
         self.ctx.enable_direct(GL_POINT_SPRITE)
         self.ctx.enable_direct(GL_MULTISAMPLE)
+
+        self.indices = np.arange(self.num_points, dtype=np.int32)
+        self.index_buffer = self.ctx.buffer(self.indices.tobytes())
 
         # Compile shaders and create program
         self.shader_program = self.ctx.program(
@@ -262,12 +291,16 @@ class MovingPointsCanvas(QOpenGLWidget):
         # Create a Buffer for states
         self.state_buffer = self.ctx.buffer(self.states.astype("i4").tobytes())
 
+        indices = np.arange(len(self.points), dtype=np.int32)
+        self.index_buffer = self.ctx.buffer(indices.astype("i4").tobytes())  # Индексы
+
         # Create Vertex Array Object (VAO)
         self.vao = self.ctx.vertex_array(
             self.shader_program,
             [
                 (self.vbo, "2f", "position"),  # Bind position attribute
                 (self.state_buffer, "1i", "state"),  # Bind state attribute
+                (self.index_buffer, "1i", "index")
             ],
         )
 
@@ -288,11 +321,31 @@ class MovingPointsCanvas(QOpenGLWidget):
         self.shader_program["zoom"].value = float(self.zoom_factor)
         self.shader_program["panOffset"].value = tuple(self.pan_offset)
         self.shader_program["useTexture"].value = self.use_texture
+        
+        self.shader_program["highlightedIndex"].value = (
+            self.followed_cat_id if self.followed_cat_id is not None else -1
+        )
 
         # Bind the texture if used
         if self.use_texture:
             self.texture.use(0)
             self.shader_program["pointTexture"].value = 0
+
+
+        if self.followed_cat_id is not None:
+            followed_cat_pos = self.points[self.followed_cat_id]
+            distances = np.linalg.norm(self.points - followed_cat_pos, axis=1)
+            visible_indices = distances <= self.follow_radius
+            visible_points = self.points[visible_indices]
+            visible_states = self.states[visible_indices]
+        else:
+            visible_points = self.points
+            visible_states = self.states
+        
+
+        self.vbo.write(visible_points.astype("f4").tobytes())
+        self.state_buffer.write(visible_states.astype("i4").tobytes())
+
         # Render the points
         self.update_buffers()
         self.vao.render(moderngl.POINTS, vertices=self.num_points)
@@ -342,6 +395,51 @@ class MovingPointsCanvas(QOpenGLWidget):
         if event.button() == Qt.MouseButton.LeftButton:
             self.mouse_dragging = False
 
+    def mouseDoubleClickEvent(self, event):
+        if event is None:
+            return
+        
+        
+        click_x = event.position().x()
+        click_y = event.position().y()
+
+        print(self.pan_offset[0], self.pan_offset[1])
+        print((click_x / self.width() - 0.5) / self.zoom_factor, (click_y / self.height() - 0.5) / self.zoom_factor)
+        print(self.points)
+        # (position + panOffset) * zoom
+        world_x = (click_x / self.width() * 2 - 1) / self.zoom_factor - self.pan_offset[0]
+        world_y = (click_y / self.height() * 2 - 1) / self.zoom_factor - self.pan_offset[1]
+
+        distances = np.linalg.norm(self.points - np.array([world_x, world_y]), axis=1)
+        nearest_cat_id = np.argmin(distances)
+
+
+        if distances[nearest_cat_id] < self.follow_radius:
+            self.followed_cat_id = nearest_cat_id
+            print("followed")
+        else:
+            self.followed_cat_id = None
+            print("fuck")
+    
+    def keyPressEvent(self, event):
+        if event is None:
+            return
+        if event.key() == Qt.Key.Key_F:
+            self.stop_following()
+            self.reset_view()
+        
+    
+    def stop_following(self):
+        self.followed_cat_id = None
+        self.zoom_factor = 1.0
+        self.pan_offset = np.array([0.0, 0.0], dtype=np.float64)
+        self.update()
+    
+    def reset_view(self):
+        self.followed_cat_id = None
+        self.zoom_factor = 1.0
+        self.pan_offset = np.array([0.0, 0.0], dtype=np.float64)
+        self.update()
 
 class GhostWidget(QWidget):
     def __init__(self, parent: QWidget | None = None):
@@ -421,6 +519,8 @@ class MainWindow(QMainWindow):
         main_widget = QWidget()
         main_widget.setLayout(control_layout)
         self.setCentralWidget(main_widget)
+
+        self.canvas.setFocus()  # Установить фокус на canvas при запуске
 
     def update_num_points(self, value: int):
         self.canvas.update_num_points(value)

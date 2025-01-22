@@ -139,7 +139,7 @@ class Core:
         self.parser.add_argument(
             "--num-points",
             type=int,
-            default=500,
+            default=5,
             help="Number of points",
         )
         self.parser.add_argument(
