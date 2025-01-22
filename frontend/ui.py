@@ -87,6 +87,18 @@ uniform bool useTexture;
 uniform int highlightedIndex;  // Индекс выделенной точки
 out vec4 fragColor;
 
+float star(vec2 p, float r, int n, float m) {
+    float an = 3.141593 / float(n);
+    float en = 3.141593 / m;
+    vec2 acs = vec2(cos(an), sin(an));
+    vec2 ecs = vec2(cos(en), sin(en));
+    float bn = mod(atan(p.x, p.y), 2.0 * an) - an;
+    p = length(p) * vec2(cos(bn), abs(sin(bn)));
+    p -= r * acs;
+    p += ecs * clamp(-dot(p, ecs), 0.0, r * acs.y / ecs.y);
+    return length(p) * sign(p.x);
+}
+
 void main() {
     if (useTexture) {
         vec2 coord = gl_PointCoord;
@@ -108,7 +120,11 @@ void main() {
         }
 
         if (fragIndex == highlightedIndex) {
-            fragColor = fragColor * 0.7;
+            // Создаем звезду
+            float s = star(coord * 1.5, 0.3, 5, 3.0); // Параметры: позиция, размер, количество лучей, острота
+            if (s < 0.0) { // Если точка внутри звезды
+                fragColor = vec4(1.0, 1.0, 1.0, 1.0); // Белая звезда
+            }
         }
     }
 }
