@@ -69,13 +69,11 @@ uniform int highlightedIndex; // Index of the highlighted point
 
 void main() {
     gl_PointSize = pointRadius * 2.0 * zoom;
-
     gl_Position = vec4((position + panOffset) * zoom, 0.0, 1.0); // Output requires vec4(float)
     fragState = state; // Pass state to fragment shader
     fragIndex = index;
 }
 """
-# (position + panOffset) * zoom
 # Fragment shader code to sample from texture or set color
 fragment_shader_code = """
 #version 410 core
@@ -344,7 +342,6 @@ class MovingPointsCanvas(QOpenGLWidget):
         self.shader_program["zoom"].value = float(self.zoom_factor)
         self.shader_program["panOffset"].value = tuple(self.pan_offset)
         self.shader_program["useTexture"].value = self.use_texture
-        
         self.shader_program["highlightedIndex"].value = (
             self.followed_cat_id if self.followed_cat_id is not None else -1
         )
@@ -354,7 +351,6 @@ class MovingPointsCanvas(QOpenGLWidget):
             self.texture.use(0)
             self.shader_program["pointTexture"].value = 0
 
-
         if self.followed_cat_id is not None:
             followed_cat_pos = self.points[self.followed_cat_id]
             distances = np.linalg.norm(self.points - followed_cat_pos, axis=1)
@@ -363,12 +359,10 @@ class MovingPointsCanvas(QOpenGLWidget):
             visible_states = self.states[visible_indices]
         else:
             visible_points = self.points
-            visible_states = self.states
-        
+            visible_states = self.states 
 
         self.vbo.write(visible_points.astype("f4").tobytes())
         self.state_buffer.write(visible_states.astype("i4").tobytes())
-
         # Render the points
         self.update_buffers()
         self.vao.render(moderngl.POINTS, vertices=self.num_points)
