@@ -33,6 +33,8 @@ class MovingPointsCanvas(QOpenGLWidget):
 
     follow_mode_changed = pyqtSignal(bool)
 
+    # Initialization
+
     def __init__(
         self,
         core: Core,
@@ -108,38 +110,105 @@ class MovingPointsCanvas(QOpenGLWidget):
             Qt.FocusPolicy.ClickFocus
         )  # Widget receives focus when clicked
 
-    def update_deltas(self):
-        self.deltas = self.core.generate_deltas(
-            self, self.num_points, self.state.speed_factor
+    
+    # OpenGL Setup and Rendering
+
+    def initializeGL(self):
+        self.ctx = moderngl.create_context()
+        self.ctx.enable(moderngl.PROGRAM_POINT_SIZE)
+        self.ctx.enable(moderngl.BLEND)
+        self.ctx.enable_direct(GL_POINT_SPRITE)
+        self.ctx.enable_direct(GL_MULTISAMPLE)
+
+        self.indices = np.arange(self.num_points, dtype=np.int32)
+        self.index_buffer = self.ctx.buffer(self.indices.tobytes())
+
+        # Compile shaders and create program
+        self.shader_program = self.ctx.program(
+            vertex_shader=VERTEX_SHADER,
+            fragment_shader=FRAGMENT_SHADER,
         )
 
-    def update_states(self):
-        # Use a worker thread for the heavy computation
+        # Load texture if an image path is provided
+        if self.use_texture:
+            self.texture = self.load_texture(self.image_path)
+        
+        self.renderer = PointRenderer(self.ctx, self.shader_program)
+        
+        # Initialize buffers
+        self.init_buffers()
+    
+    def load_texture(self, file_path):
+        image = QMovie(file_path).convertToFormat(QImage.Format_RGBA8888)
+        width, height = image.width(), image.height()
 
-        if self.is_updating_states:
-            return  # Skip if a thread is already running
-        self.is_updating_states = True  # Mark as running
-        self.core_thread = QThread(parent=self)
-        self.worker = UpdateStatesWorker(
-            self.core, self.num_points, self.points, self.width(), self.height()
+        bits = image.bits()  # Get the texture data
+        if bits is None:
+            raise Exception("Failed to load texture")
+        data = bits.asstring(width * height * 4)
+        texture = self.ctx.texture((width, height), 4, data)
+        texture.use()  # Make the texture active
+        return texture
+    
+    @no_type_check
+    def paintGL(self):
+        self.fb = self.ctx.detect_framebuffer(self.defaultFramebufferObject())
+        self.fb.clear()
+        self.fb.use()
+
+        render_state = RenderState(
+            points = self.points,
+            states = self.states,
+            followed_cat_id=self.state.followed_cat_id,
+            zoom_factor=self.state.zoom_factor,
+            pan_offset=self.state.pan_offset,
+            point_radius=self.point_radius,
+            follow_radius=self.follow_radius,
+            use_texture=self.use_texture
         )
-        self.worker.moveToThread(self.core_thread)
+        # Set shader uniforms
 
-        # Connect signals and slots
+        self.renderer.setup_uniforms(render_state)
+        visible_points, visible_states = self.renderer.get_visible_points(render_state)
 
-        self.core_thread.started.connect(self.worker.run)
-        self.worker.finished.connect(self.handle_states_update)
-        self.worker.finished.connect(self.core_thread.quit)
-        self.worker.finished.connect(self.worker.deleteLater)
-        self.core_thread.finished.connect(self.core_thread.deleteLater)
-        self.worker.finished.connect(self.reset_update_flag)
-        # Start the thread
+        self.vbo.write(visible_points.astype("f4").tobytes())
+        self.state_buffer.write(visible_states.astype("i4").tobytes())
 
-        self.core_thread.start()
+        self.update_buffers()
+        self.vao.render(moderngl.POINTS, vertices=self.num_points)
+    
+    def resizeGL(self, w: int, h: int):
+        self.ctx.viewport = (0, 0, w, h)
 
-    def reset_update_flag(self):
-        """Reset the flag to allow the next thread to start."""
-        self.is_updating_states = False
+    # Buffer Managment
+
+    def init_buffers(self):
+        # Create Vertex Buffer Object (VBO) for positions
+        self.vbo = self.ctx.buffer(self.points.astype("f4").tobytes())
+
+        # Create a Buffer for states
+        self.state_buffer = self.ctx.buffer(self.states.astype("i4").tobytes())
+
+        indices = np.arange(len(self.points), dtype=np.int32)
+        self.index_buffer = self.ctx.buffer(indices.astype("i4").tobytes())
+
+        # Create Vertex Array Object (VAO)
+        self.vao = self.ctx.vertex_array(
+            self.shader_program,
+            [
+                (self.vbo, "2f", "position"),  # Bind position attribute
+                (self.state_buffer, "1i", "state"),  # Bind state attribute
+                (self.index_buffer, "1i", "index"),
+            ],
+        )
+
+    def update_buffers(self):
+        self.vbo.orphan(len(self.points) * 8)
+        self.state_buffer.orphan(len(self.states) * 4)
+        self.vbo.write(self.points.astype("f4").tobytes())
+        self.state_buffer.write(self.states.astype("i4").tobytes())
+
+    # State Updates
 
     def handle_states_update(self, new_states: np.ndarray):
         # Update states in the main thread
@@ -184,101 +253,44 @@ class MovingPointsCanvas(QOpenGLWidget):
             self.state_buffer.write(self.states.astype("i4").tobytes())
         self.update()
 
-    def init_buffers(self):
-        # Create Vertex Buffer Object (VBO) for positions
+    def stop_following(self):
+        self.state = CanvasState()
+        self.follow_mode_changed.emit(False)
 
-        self.vbo = self.ctx.buffer(self.points.astype("f4").tobytes())
-
-        # Create a Buffer for states
-
-        self.state_buffer = self.ctx.buffer(self.states.astype("i4").tobytes())
-
-        indices = np.arange(len(self.points), dtype=np.int32)
-        self.index_buffer = self.ctx.buffer(indices.astype("i4").tobytes())
-
-        # Create Vertex Array Object (VAO)
-
-        self.vao = self.ctx.vertex_array(
-            self.shader_program,
-            [
-                (self.vbo, "2f", "position"),  # Bind position attribute
-                (self.state_buffer, "1i", "state"),  # Bind state attribute
-                (self.index_buffer, "1i", "index"),
-            ],
+    def update_deltas(self):
+        self.deltas = self.core.generate_deltas(
+            self, self.num_points, self.state.speed_factor
         )
 
-    def update_buffers(self):
-        self.vbo.orphan(len(self.points) * 8)
-        self.state_buffer.orphan(len(self.states) * 4)
-        self.vbo.write(self.points.astype("f4").tobytes())
-        self.state_buffer.write(self.states.astype("i4").tobytes())
+    def update_states(self):
+        # Use a worker thread for the heavy computation
 
-    def initializeGL(self):
-        self.ctx = moderngl.create_context()
-        self.ctx.enable(moderngl.PROGRAM_POINT_SIZE)
-        self.ctx.enable(moderngl.BLEND)
-        self.ctx.enable_direct(GL_POINT_SPRITE)
-        self.ctx.enable_direct(GL_MULTISAMPLE)
-
-        self.indices = np.arange(self.num_points, dtype=np.int32)
-        self.index_buffer = self.ctx.buffer(self.indices.tobytes())
-
-        # Compile shaders and create program
-        self.shader_program = self.ctx.program(
-            vertex_shader=VERTEX_SHADER,
-            fragment_shader=FRAGMENT_SHADER,
+        if self.is_updating_states:
+            return  # Skip if a thread is already running
+        self.is_updating_states = True  # Mark as running
+        self.core_thread = QThread(parent=self)
+        self.worker = UpdateStatesWorker(
+            self.core, self.num_points, self.points, self.width(), self.height()
         )
+        self.worker.moveToThread(self.core_thread)
 
-        # Load texture if an image path is provided
-        if self.use_texture:
-            self.texture = self.load_texture(self.image_path)
-        
-        self.renderer = PointRenderer(self.ctx, self.shader_program)
-        
-        # Initialize buffers
-        self.init_buffers()
+        # Connect signals and slots
 
-    @no_type_check
-    def paintGL(self):
-        self.fb = self.ctx.detect_framebuffer(self.defaultFramebufferObject())
-        self.fb.clear()
-        self.fb.use()
+        self.core_thread.started.connect(self.worker.run)
+        self.worker.finished.connect(self.handle_states_update)
+        self.worker.finished.connect(self.core_thread.quit)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.core_thread.finished.connect(self.core_thread.deleteLater)
+        self.worker.finished.connect(self.reset_update_flag)
+        # Start the thread
 
-        render_state = RenderState(
-            points = self.points,
-            states = self.states,
-            followed_cat_id=self.state.followed_cat_id,
-            zoom_factor=self.state.zoom_factor,
-            pan_offset=self.state.pan_offset,
-            point_radius=self.point_radius,
-            follow_radius=self.follow_radius,
-            use_texture=self.use_texture
-        )
-        # Set shader uniforms
+        self.core_thread.start()
 
-        self.renderer.setup_uniforms(render_state)
-        visible_points, visible_states = self.renderer.get_visible_points(render_state)
+    def reset_update_flag(self):
+        """Reset the flag to allow the next thread to start."""
+        self.is_updating_states = False
 
-        self.vbo.write(visible_points.astype("f4").tobytes())
-        self.state_buffer.write(visible_states.astype("i4").tobytes())
-
-        self.update_buffers()
-        self.vao.render(moderngl.POINTS, vertices=self.num_points)
-
-    def load_texture(self, file_path):
-        image = QMovie(file_path).convertToFormat(QImage.Format_RGBA8888)
-        width, height = image.width(), image.height()
-
-        bits = image.bits()  # Get the texture data
-        if bits is None:
-            raise Exception("Failed to load texture")
-        data = bits.asstring(width * height * 4)
-        texture = self.ctx.texture((width, height), 4, data)
-        texture.use()  # Make the texture active
-        return texture
-
-    def resizeGL(self, w: int, h: int):
-        self.ctx.viewport = (0, 0, w, h)
+    # Event Handlers
 
     def wheelEvent(self, event: QWheelEvent | None):
         # Zoom in/out with the mouse wheel
@@ -312,21 +324,30 @@ class MovingPointsCanvas(QOpenGLWidget):
     def mouseDoubleClickEvent(self, event):
         if event is None:
             return
-        click_x = event.position().x()
-        click_y = event.position().y()
+        
+        world_pos = self._get_world_coordinates(event.position())
+        selected_cat_id = self._find_nearest_cat_id(world_pos)
 
-        world_x = (click_x / self.width() * 2 - 1) / self.state.zoom_factor - self.state.pan_offset[
-            0
-        ]
-        world_y = (
-            click_y / self.height() * 2 - 1
-        ) / self.state.zoom_factor - self.state.pan_offset[1]
+        self._handle_following_mode_starting(selected_cat_id)
 
-        distances = np.linalg.norm(self.points - np.array([world_x, -world_y]), axis=1)
-        nearest_cat_id = int(np.argmin(distances))
-
-        if distances[nearest_cat_id] < self.follow_radius:
-            self.state.followed_cat_id = nearest_cat_id
+    def _get_world_coordinates(self, screen_pos: QPointF) -> np.ndarray:
+        world_x = (screen_pos.x() / self.width() * 2 - 1) / self.state.zoom_factor - self.state.pan_offset[0]
+        world_y = (screen_pos.y() / self.height() * 2 - 1) / self.state.zoom_factor - self.state.pan_offset[1]
+        return np.array([world_x, -world_y])
+    
+    def _find_nearest_cat_id(self, world_pos: np.ndarray) -> int:
+        """Find the nearest point to given world coordinates"""
+        distances = np.linalg.norm(self.points - world_pos, axis=1)
+        return int(np.argmin(distances))
+    
+    def _handle_following_mode_starting(self, point_id: int):
+        distances = np.linalg.norm(
+            self.points - self.points[point_id], 
+            axis=1
+        )
+        
+        if distances[point_id] < self.follow_radius:
+            self.state.followed_cat_id = point_id
             self.follow_mode_changed.emit(True)
         else:
             self.state.followed_cat_id = None
@@ -335,11 +356,7 @@ class MovingPointsCanvas(QOpenGLWidget):
     def keyPressEvent(self, event):
         if event is None:
             return
-        if event.nativeVirtualKey() == 0x46:  # 0x46 - is the key code for F
+        F_KEY = 0x46
+        if event.nativeVirtualKey() == F_KEY:
             self.stop_following()
             self.update()
-
-    def stop_following(self):
-        self.state = CanvasState()
-        self.follow_mode_changed.emit(False)
-        self.update()
