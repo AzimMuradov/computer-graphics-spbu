@@ -1,6 +1,7 @@
 import argparse
 import logging
 import sys
+from pathlib import Path
 from typing import *
 
 import numpy as np
@@ -11,13 +12,14 @@ from PyQt6.QtWidgets import QApplication
 
 from frontend.ui import MainWindow, MovingPointsCanvas, qt_surface_format
 
-
 # Set up logger
 logging.basicConfig()
 logger = logging.getLogger()
 
 
 class Backend(Protocol):
+    """Protocol defining the interface for the backend library."""
+
     def drunk_cats_configure(self, fight_radius: float, hiss_radius: float): ...
 
     def drunk_cats_calculate_states(
@@ -32,36 +34,96 @@ class Backend(Protocol):
     def drunk_cats_free_states(self, states: Any): ...
 
 
+class ArgumentParser:
+    """Handles command line argument parsing"""
+
+    @staticmethod
+    def create_parser() -> argparse.ArgumentParser:
+        parser = argparse.ArgumentParser(description="OpenGL Moving Points Application")
+        parser.add_argument(
+            "--radius", type=float, default=10, help="Radius of the points"
+        )
+        parser.add_argument(
+            "--image-path",
+            type=str,
+            default=None,
+            help="Path to the image file for point texture",
+        )
+        parser.add_argument(
+            "--num-points", type=int, default=500, help="Number of points"
+        )
+        parser.add_argument(
+            "--fight-radius",
+            type=int,
+            default=15,
+            help="Radius of the cat's fight zone, must be smaller than hiss-radius",
+        )
+        parser.add_argument(
+            "--hiss-radius",
+            type=int,
+            default=30,
+            help="Radius of the cat's hiss zone, must be larger than fight-radius",
+        )
+        parser.add_argument(
+            "--window-width", type=int, default=1000, help="Width of the window"
+        )
+        parser.add_argument(
+            "--window-height", type=int, default=800, help="Height of the window"
+        )
+        parser.add_argument(
+            "--debug", type=bool, default=False, help="Enable debug messages"
+        )
+        return parser
+
+
 class Core:
+    """Main application core handling backend integration and UI coordination"""
+
     def __init__(self):
-        self.ffi = FFI()
+        self.ffi = self._initialize_ffi()
+        self.lib = self._load_backend_library()
+        self.parser = ArgumentParser.create_parser()
+        self.args = self.parser.parse_args()
+        self.global_scale = 1.0
 
-        from pathlib import Path
+        self._configure_logging()
+        self._configure_backend()
 
+    def _initialize_ffi(self) -> FFI:
+        ffi = FFI()
         backend_dir = Path(__file__).parent.parent / "backend"
 
         with open(backend_dir / "library.h", mode="r") as f:
-            dec = ""
-            for line in f:
-                if line.startswith("#"):
-                    continue
-                dec += line
-            self.ffi.cdef(dec)
-        self.lib = cast(Backend, self.ffi.dlopen(str(backend_dir / "libbackend.so")))
+            declarations = "".join(line for line in f if not line.startswith("#"))
+            ffi.cdef(declarations)
+        return ffi
 
-        self.init_parser()
-        self.args = self.parser.parse_args()
+    def _load_backend_library(self) -> Backend:
+        backend_path = Path(__file__).parent.parent / "backend" / "libbackend.so"
+        return cast(Backend, self.ffi.dlopen(str(backend_path)))
 
+    def _configure_logging(self) -> None:
         if self.args.debug:
             logger.setLevel(logging.DEBUG)
+
+    def _configure_backend(self) -> None:
         self.lib.drunk_cats_configure(self.args.fight_radius, self.args.hiss_radius)
 
-    def main(self):
+    def main(self) -> None:
+        self._configure_qt()
+        app = QApplication(sys.argv)
+        window = self._create_main_window()
+        self.global_scale = app.devicePixelRatio()
+        self.start_ui(app, window)
+
+    @staticmethod
+    def _configure_qt() -> None:
         QSurfaceFormat.setDefaultFormat(qt_surface_format())
         QApplication.setAttribute(Qt.ApplicationAttribute.AA_ShareOpenGLContexts, True)
         QApplication.setAttribute(Qt.ApplicationAttribute.AA_UseDesktopOpenGL)
-        app = QApplication(sys.argv)
-        window = MainWindow(
+
+    def _create_main_window(self) -> MainWindow:
+        return MainWindow(
             point_radius=self.args.radius,
             num_points=self.args.num_points,
             image_path=self.args.image_path,
@@ -69,8 +131,6 @@ class Core:
             height=self.args.window_height,
             core=self,
         )
-        self.global_scale = app.devicePixelRatio()
-        self.start_ui(app, window)
 
     def start_ui(self, app: QApplication, window: MainWindow) -> None:
         window.show()
@@ -86,89 +146,39 @@ class Core:
         self, num_points: int, points: np.ndarray, width: int, height: int
     ) -> np.ndarray:
         points_ptr = self.ffi.cast("OpenGlPosition *", self.ffi.from_buffer(points))
-
         result_ptr = self.lib.drunk_cats_calculate_states(
             num_points, points_ptr, width, height, self.global_scale
         )
 
-        # Convert the returned C array to a numpy array
-        buffer: Any = self.ffi.buffer(result_ptr, num_points * self.ffi.sizeof("int"))
-        result = np.frombuffer(
-            buffer=buffer,
-            dtype=np.int32,
-        ).copy()
-
+        result = self._process_state_results(result_ptr, num_points)
         self.lib.drunk_cats_free_states(result_ptr)
+        self._log_debug_states(result)
 
+        return result
+
+    def _process_state_results(self, result_ptr: Any, num_points: int) -> np.ndarray:
+        buffer = self.ffi.buffer(result_ptr, num_points * self.ffi.sizeof("int"))
+        return np.frombuffer(buffer=buffer, dtype=np.int32).copy()
+
+    @staticmethod
+    def _log_debug_states(result: np.ndarray) -> None:
         if logger.isEnabledFor(logging.DEBUG):
             mapping = {0: "calm", 1: "hisses", 2: "wants to fight"}
             log_obj = {i: mapping[state] for i, state in enumerate(result)}
             logger.debug(str(log_obj))
 
-        return result
-
-    def generate_points(self, count: int, zoom_factor: float) -> np.ndarray:
-        points = np.random.uniform(
+    @staticmethod
+    def generate_points(count: int, zoom_factor: float) -> np.ndarray:
+        """Generate random point positions."""
+        return np.random.uniform(
             -1 / zoom_factor, 1 / zoom_factor, size=(count, 2)
         ).astype(np.float64)
-        return points
 
+    @staticmethod
     def generate_deltas(
-        self, widget: MovingPointsCanvas, count: int, speed: float
+        widget: MovingPointsCanvas, count: int, speed: float
     ) -> np.ndarray:
-
-        deltas = np.random.uniform(-speed / 20, speed / 20, size=(count, 2))
-        return deltas.astype(np.float64)
-
-    def init_parser(self):
-        self.parser = argparse.ArgumentParser(
-            description="OpenGL Moving Points Application"
-        )
-        self.parser.add_argument(
-            "--radius",
-            type=float,
-            default=10,
-            help="Radius of the points",
-        )
-        self.parser.add_argument(
-            "--image-path",
-            type=str,
-            default=None,
-            help="Path to the image file for point texture",
-        )
-        self.parser.add_argument(
-            "--num-points",
-            type=int,
-            default=500,
-            help="Number of points",
-        )
-        self.parser.add_argument(
-            "--fight-radius",
-            type=int,
-            default=15,
-            help="Radius of the cat's fight zone, must be smaller than hiss-radius",
-        )
-        self.parser.add_argument(
-            "--hiss-radius",
-            type=int,
-            default=30,
-            help="Radius of the cat's hiss zone, must be larger than fight-radius",
-        )
-        self.parser.add_argument(
-            "--window-width",
-            type=int,
-            default=1000,
-            help="Width of the window",
-        )
-        self.parser.add_argument(
-            "--window-height",
-            type=int,
-            default=800,
-            help="Height of the window",
-        )
-        self.parser.add_argument(
-            "--debug",
-            type=bool,
-            default=False,
-            help="Enable debug messages",
+        """Generate random movement deltas for points."""
+        return np.random.uniform(-speed / 20, speed / 20, size=(count, 2)).astype(
+            np.float64
         )
