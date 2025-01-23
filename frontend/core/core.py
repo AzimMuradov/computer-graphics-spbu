@@ -10,13 +10,13 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QSurfaceFormat
 from PyQt6.QtWidgets import QApplication
 
-from frontend.ui import MainWindow, MovingPointsCanvas, qt_surface_format
+from frontend.ui.widgets.moving_points_canvas import MovingPointsCanvas, qt_surface_format
+from frontend.ui.widgets.main_window import MainWindow
 from frontend.constants import RenderingConstants
 
 # Set up logger
 logging.basicConfig()
 logger = logging.getLogger()
-
 
 class Backend(Protocol):
     """Protocol defining the interface for the backend library"""
@@ -90,7 +90,7 @@ class Core:
 
     def _initialize_ffi(self) -> FFI:
         ffi = FFI()
-        backend_dir = Path(__file__).parent.parent / "backend"
+        backend_dir = Path(__file__).parent.parent.parent / "backend"
 
         with open(backend_dir / "library.h", mode="r") as f:
             declarations = "".join(line for line in f if not line.startswith("#"))
@@ -98,7 +98,7 @@ class Core:
         return ffi
 
     def _load_backend_library(self) -> Backend:
-        backend_path = Path(__file__).parent.parent / "backend" / "libbackend.so"
+        backend_path = Path(__file__).parent.parent.parent / "backend" / "libbackend.so"
         return cast(Backend, self.ffi.dlopen(str(backend_path)))
 
     def _configure_logging(self) -> None:

@@ -1,16 +1,14 @@
 from __future__ import annotations
 
 from frontend.constants import RenderingConstants, UpdateIntervals, CameraSettings, OpenGLSettings
-from frontend.shaders.shader_source import VERTEX_SHADER, FRAGMENT_SHADER
-from frontend.workers.state_updater import UpdateStatesWorker
-from frontend.rendering.renderer import RenderState, PointRenderer
+from frontend.ui.shader_source import VERTEX_SHADER, FRAGMENT_SHADER
+from frontend.ui.state_updater import UpdateStatesWorker
+from frontend.ui.renderer import RenderState, PointRenderer
+from frontend.canvas_state import CanvasState
+from frontend.ui.input_handler import InputHandler
 
-from functools import partial
-from time import time
 from typing import *
 from PyQt6.QtGui import (
-    QFocusEvent,
-    QInputEvent,
     QMovie,
     QSurfaceFormat,
     QWheelEvent,
@@ -19,20 +17,10 @@ from PyQt6.QtGui import (
 import moderngl
 import numpy as np
 from OpenGL.GL import *
-from PyQt6.QtCore import Qt, QTimer, QThread, QObject, pyqtSignal, QPointF, QEvent
+from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal, QPointF
 from PyQt6.QtGui import QImage
-from PyQt6.QtWidgets import (
-    QApplication,
-    QLabel,
-    QMainWindow,
-    QSizePolicy,
-    QSlider,
-    QSpinBox,
-    QVBoxLayout,
-    QWidget,
-)
 from PyQt6.QtOpenGLWidgets import QOpenGLWidget
-
+from frontend.core.protocol import Core
 
 def qt_surface_format():
     fmt = QSurfaceFormat()
@@ -42,22 +30,6 @@ def qt_surface_format():
     fmt.setDepthBufferSize(OpenGLSettings.DEPTH_BUFFER_SIZE)
     fmt.setStencilBufferSize(OpenGLSettings.STENCIL_BUFFER_SIZE)
     return fmt
-
-
-class Core(Protocol):
-    def __init__(self): ...
-    def start_ui(self, app: QApplication, window: MainWindow): ...
-    def update_num_points(self, window: MainWindow, num_points: int): ...
-    def update_speed(self, window: MainWindow, speed: int): ...
-    def generate_points(self, count: int, zoom_factor: float) -> np.ndarray: ...
-    def generate_deltas(
-        self, widget: MovingPointsCanvas, count: int, speed: float
-    ) -> np.ndarray: ...
-    def update_states(
-        self, num_points: int, points: np.ndarray, width: int, height: int
-    ) -> np.ndarray: ...
-
-# Worker class to handle the heavy computation
 
 
 class MovingPointsCanvas(QOpenGLWidget):
@@ -76,12 +48,12 @@ class MovingPointsCanvas(QOpenGLWidget):
         super().__init__()
         self.setFormat(qt_surface_format())
         self.core = core
+        self.state = CanvasState()
+        self.input_handler = InputHandler()
         self.point_radius = point_radius
         self.num_points = num_points
         self.image_path = image_path
         self.use_texture = image_path is not None
-        self.zoom_factor = RenderingConstants.DEFAULT_ZOOM_FACTOR
-        self.pan_offset = np.array([0.0, 0.0], dtype=np.float64)  # Initial pan offset
         self.mouse_dragging = False  # Track if mouse is dragging
         self.last_mouse_pos: QPointF | None = None  # Last mouse position for panning
         self.show_cursor_coords = False  # Flag to toggle cursor display
@@ -89,35 +61,32 @@ class MovingPointsCanvas(QOpenGLWidget):
         self.cursor_coords = np.array(
             [0.0, 0.0], dtype=np.float64
         )  # Store cursor coordinates
-        self.speed_factor = 1.0  # Initial speed factor
         self.r1 = r1
         self.r2 = r2
 
         # Generate random points and directions
-
-        self.points = self.core.generate_points(self.num_points, self.zoom_factor)
+        self.points = self.core.generate_points(self.num_points, self.state.zoom_factor)
         self.states = np.zeros(self.num_points, dtype=int)
 
-        # # Timer for updating points
-
+        # Timer for updating points
         self.timer = QTimer()
+        self.timer.timeout.connect(self.update_positions)
+        self.timer.start(UpdateIntervals.POSITION_UPDATE)
+
         self.core_thread = QThread(parent=self)
 
-        # # Initial target positions as current positions
+        # Initial target positions as current positions
 
         self.update_deltas()
-        self.target_update_timer = QTimer()
-        self.state_update_timer = QTimer()
-        # # Timer to update target positions
 
+        self.target_update_timer = QTimer()
         self.target_update_timer.timeout.connect(self.update_deltas)
+        self.target_update_timer.start(500)  # Update targets every 0.5 seconds
+
+        self.state_update_timer = QTimer()
         self.state_update_timer.timeout.connect(self.update_states)
         self.state_update_timer.start(500)
-        self.target_update_timer.start(500)  # Update targets every 0.5 seconds
-        self.timer.start(1)
-        self.timer.timeout.connect(self.update_positions)
 
-        self.followed_cat_id: int | None = None
         self.follow_radius: float = RenderingConstants.DEFAULT_FOLLOW_RADIUS
 
         self.setFocusPolicy(
@@ -126,7 +95,7 @@ class MovingPointsCanvas(QOpenGLWidget):
 
     def update_deltas(self):
         self.deltas = self.core.generate_deltas(
-            self, self.num_points, self.speed_factor
+            self, self.num_points, self.state.speed_factor
         )
 
     def update_states(self):
@@ -164,7 +133,7 @@ class MovingPointsCanvas(QOpenGLWidget):
 
     def update_num_points(self, num_points: int):
         self.num_points = num_points
-        self.points = self.core.generate_points(self.num_points, self.zoom_factor)
+        self.points = self.core.generate_points(self.num_points, self.state.zoom_factor)
         self.states = np.zeros(self.num_points, dtype=int)
         self.indices = np.arange(self.num_points, dtype=np.int32)
         self.index_buffer = self.ctx.buffer(self.indices.tobytes())
@@ -178,21 +147,21 @@ class MovingPointsCanvas(QOpenGLWidget):
 
         # If tracking is enabled, center the camera on the selected cat
 
-        if self.followed_cat_id is not None:
-            followed_cat_pos = self.points[self.followed_cat_id]
+        if self.state.followed_cat_id is not None:
+            followed_cat_pos = self.points[self.state.followed_cat_id]
 
             target_x = -followed_cat_pos[0]
             target_y = -followed_cat_pos[1]
 
             # Smoothly move camera to target position
-            self.pan_offset[0] = (
-                self.pan_offset[0] * (1 - CameraSettings.SMOOTHNESS) + target_x * CameraSettings.SMOOTHNESS
+            self.state.pan_offset[0] = (
+                self.state.pan_offset[0] * (1 - CameraSettings.SMOOTHNESS) + target_x * CameraSettings.SMOOTHNESS
             )
-            self.pan_offset[1] = (
-                self.pan_offset[1] * (1 - CameraSettings.SMOOTHNESS) + target_y * CameraSettings.SMOOTHNESS
+            self.state.pan_offset[1] = (
+                self.state.pan_offset[1] * (1 - CameraSettings.SMOOTHNESS) + target_y * CameraSettings.SMOOTHNESS
             )
 
-            self.zoom_factor = CameraSettings.FOLLOW_ZOOM_RATIO / self.follow_radius
+            self.state.zoom_factor = CameraSettings.FOLLOW_ZOOM_RATIO / self.follow_radius
 
         # Update VBO and state buffer with new data
         if len(self.points) == len(self.states):
@@ -260,13 +229,12 @@ class MovingPointsCanvas(QOpenGLWidget):
         self.fb.clear()
         self.fb.use()
 
-
         render_state = RenderState(
             points = self.points,
             states = self.states,
-            followed_cat_id=self.followed_cat_id,
-            zoom_factor=self.zoom_factor,
-            pan_offset=self.pan_offset,
+            followed_cat_id=self.state.followed_cat_id,
+            zoom_factor=self.state.zoom_factor,
+            pan_offset=self.state.pan_offset,
             point_radius=self.point_radius,
             follow_radius=self.follow_radius,
             use_texture=self.use_texture
@@ -299,36 +267,32 @@ class MovingPointsCanvas(QOpenGLWidget):
 
     def wheelEvent(self, event: QWheelEvent | None):
         # Zoom in/out with the mouse wheel
-
         if event is None:
             return
-        self.zoom_factor *= 1.1 if event.angleDelta().y() > 0 else 0.9
+        self.state.zoom_factor = self.input_handler.handle_wheel(event, self.state.zoom_factor)
 
     def mousePressEvent(self, event: QMouseEvent | None):
         if event is None:
             return
-        if event.button() == Qt.MouseButton.LeftButton:
-            self.mouse_dragging = True
-            self.last_mouse_pos = event.position()
+        self.input_handler.handle_mouse_press(event)
 
     def mouseMoveEvent(self, event: QMouseEvent | None):
         if event is None or self.last_mouse_pos is None:
             return
-        if self.mouse_dragging:
-            # Calculate movement difference
+        new_pan_offset = self.input_handler.handle_mouse_move(
+            event,
+            self.width(),
+            self.height(),
+            self.state.zoom_factor,
+            self.state.pan_offset
+        )
 
-            dx = (event.position().x() - self.last_mouse_pos.x()) / self.width()  # type: ignore[attr-defined]
-            dy = (event.position().y() - self.last_mouse_pos.y()) / self.height()  # type: ignore[attr-defined]
-
-            # Update pan offset, scaled by zoom factor
-
-            self.pan_offset[0] += dx / self.zoom_factor
-            self.pan_offset[1] -= dy / self.zoom_factor
-            self.last_mouse_pos = event.position()
+        if new_pan_offset is not None:
+            self.state.pan_offset = new_pan_offset
 
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
-            self.mouse_dragging = False
+            self.input_handler.mouse_dragging = False
 
     def mouseDoubleClickEvent(self, event):
         if event is None:
@@ -336,21 +300,21 @@ class MovingPointsCanvas(QOpenGLWidget):
         click_x = event.position().x()
         click_y = event.position().y()
 
-        world_x = (click_x / self.width() * 2 - 1) / self.zoom_factor - self.pan_offset[
+        world_x = (click_x / self.width() * 2 - 1) / self.state.zoom_factor - self.state.pan_offset[
             0
         ]
         world_y = (
             click_y / self.height() * 2 - 1
-        ) / self.zoom_factor - self.pan_offset[1]
+        ) / self.state.zoom_factor - self.state.pan_offset[1]
 
         distances = np.linalg.norm(self.points - np.array([world_x, -world_y]), axis=1)
         nearest_cat_id = int(np.argmin(distances))
 
         if distances[nearest_cat_id] < self.follow_radius:
-            self.followed_cat_id = nearest_cat_id
+            self.state.followed_cat_id = nearest_cat_id
             self.follow_mode_changed.emit(True)
         else:
-            self.followed_cat_id = None
+            self.state.followed_cat_id = None
             self.follow_mode_changed.emit(False)
 
     def keyPressEvent(self, event):
@@ -361,102 +325,6 @@ class MovingPointsCanvas(QOpenGLWidget):
             self.update()
 
     def stop_following(self):
-        self.followed_cat_id = None
-        self.zoom_factor = 1.0
-        self.pan_offset = np.array([0.0, 0.0], dtype=np.float64)
+        self.state = CanvasState()
         self.follow_mode_changed.emit(False)
         self.update()
-
-
-class GhostWidget(QWidget):
-    def __init__(self, parent: QWidget | None = None):
-        super().__init__(parent)
-
-    def event(self, event: QEvent | None):
-        if (parent := self.parent()) is None:
-            return
-        if isinstance(event, QInputEvent):
-            event.ignore()
-            parent.inputEvent(event)
-            if event.isAccepted():
-                return True
-        elif isinstance(event, QFocusEvent):
-            parent.event(event)
-        return super().event(event)
-
-
-class MainWindow(QMainWindow):
-    def __init__(
-        self,
-        point_radius: float,
-        num_points: int,
-        image_path: str,
-        width: int,
-        height: int,
-        core: Core,
-    ):
-        super().__init__()
-        self.resize(width, height)
-        self.setWindowTitle("Optimized Moving Points Field with OpenGL")
-        self.core = core
-        self.canvas = MovingPointsCanvas(
-            core=self.core,
-            point_radius=point_radius,
-            num_points=num_points,
-            image_path=image_path,
-        )
-
-        # Number of points control
-
-        self.num_points_label = QLabel("Number of Points:")
-        self.num_points_input = QSpinBox()
-        self.num_points_input.setRange(1, 1000000)
-        self.num_points_input.setValue(num_points)
-
-        # Speed control slider
-
-        self.speed_slider = QSlider(Qt.Orientation.Horizontal)
-        self.speed_slider.setRange(1, 1000)
-        self.speed_slider.setValue(200)  # Set default speed factor to 1.0 (scaled)
-        self.speed_label = QLabel("Speed:")
-
-        # Layout for controls
-
-        control_layout = QVBoxLayout()
-        control_layout.addWidget(self.speed_label)
-        control_layout.addWidget(self.speed_slider)
-        control_layout.addWidget(self.num_points_label)
-        control_layout.addWidget(self.num_points_input)
-        self.canvas.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
-        )
-        control_layout.addWidget(self.canvas)
-        # self.canvas.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
-        # self.canvas.setFocus()
-
-        # Connect with core
-
-        self.speed_slider.valueChanged.connect(partial(self.core.update_speed, self))
-        self.num_points_input.valueChanged.connect(
-            partial(self.core.update_num_points, self)
-        )
-
-        # Main widget setup
-
-        main_widget = QWidget()
-        main_widget.setLayout(control_layout)
-        self.setCentralWidget(main_widget)
-
-        self.canvas.setFocus()  # Set focus on canvas at startup
-        self.canvas.follow_mode_changed.connect(self.on_follow_mode_changed)
-
-    def on_follow_mode_changed(self, is_following: bool):
-        self.num_points_input.setEnabled(not is_following)
-
-    def update_num_points(self, value: int):
-        self.canvas.update_num_points(value)
-
-    # Exponentially scale the speed factor
-
-    def update_speed(self, value: int):
-        self.canvas.speed_factor = 1.5 ** ((value - 200) / 20)
