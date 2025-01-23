@@ -2,21 +2,18 @@ from PyQt6.QtCore import QObject, pyqtSignal
 import numpy as np
 from typing import Protocol
 
+
 class Core(Protocol):
     def update_states(
         self, num_points: int, points: np.ndarray, width: int, height: int
     ) -> np.ndarray: ...
 
+
 class UpdateStatesWorker(QObject):
     finished = pyqtSignal(np.ndarray)
 
     def __init__(
-        self, 
-        core: Core, 
-        num_points: int, 
-        points: np.ndarray, 
-        width: int, 
-        height: int
+        self, core: Core, num_points: int, points: np.ndarray, width: int, height: int
     ):
         super().__init__()
         self.core = core

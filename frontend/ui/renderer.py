@@ -3,6 +3,7 @@ import numpy as np
 import moderngl
 from typing import Optional
 
+
 @dataclass
 class RenderState:
     points: np.ndarray
@@ -14,11 +15,12 @@ class RenderState:
     follow_radius: float
     use_texture: bool
 
+
 class PointRenderer:
     def __init__(self, ctx: moderngl.Context, shader_program: moderngl.Program):
         self.ctx = ctx
         self.shader_program = shader_program
-        
+
     def setup_uniforms(self, state: RenderState):
         self.shader_program["pointRadius"].value = state.point_radius
         self.shader_program["zoom"].value = float(state.zoom_factor)
@@ -27,7 +29,7 @@ class PointRenderer:
         self.shader_program["highlightedIndex"].value = (
             state.followed_cat_id if state.followed_cat_id is not None else -1
         )
-    
+
     def get_visible_points(self, state: RenderState) -> tuple[np.ndarray, np.ndarray]:
         if state.followed_cat_id is not None:
             followed_cat_pos = state.points[state.followed_cat_id]

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+
 @dataclass
 class RenderingConstants:
     FPS: int = 100
@@ -9,17 +10,20 @@ class RenderingConstants:
     DEFAULT_FOLLOW_RADIUS: float = 0.5
     DEFAULT_R1: float = 0.1
     DEFAULT_R2: float = 0.1
-    
+
+
 @dataclass
 class UpdateIntervals:
     POSITION_UPDATE: int = 1  # milliseconds
     TARGET_UPDATE: int = 500  # milliseconds
-    STATE_UPDATE: int = 500   # milliseconds
+    STATE_UPDATE: int = 500  # milliseconds
+
 
 @dataclass
 class CameraSettings:
     SMOOTHNESS: float = 0.1
     FOLLOW_ZOOM_RATIO: float = 3.00
+
 
 @dataclass
 class OpenGLSettings:

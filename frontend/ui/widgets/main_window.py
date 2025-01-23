@@ -13,6 +13,7 @@ from PyQt6.QtCore import Qt
 from frontend.ui.widgets.moving_points_canvas import MovingPointsCanvas
 from frontend.core.protocol import Core
 
+
 class MainWindow(QMainWindow):
     def __init__(
         self,
@@ -27,20 +28,20 @@ class MainWindow(QMainWindow):
         self.resize(width, height)
         self.setWindowTitle("Optimized Moving Points Field with OpenGL")
         self.core = core
-        
+
         # Создание основного виджета и компоновки
         self.main_widget = QWidget()
         self.control_layout = QVBoxLayout()
-        
+
         # Инициализация элементов управления
         self._init_controls(num_points)
-        
+
         # Инициализация холста
         self._init_canvas(point_radius, num_points, image_path)
-        
+
         # Настройка компоновки
         self._setup_layout()
-        
+
         # Подключение сигналов
         self._connect_signals()
 
@@ -65,8 +66,7 @@ class MainWindow(QMainWindow):
             image_path=image_path,
         )
         self.canvas.setSizePolicy(
-            QSizePolicy.Policy.Expanding,
-            QSizePolicy.Policy.Expanding
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
 
     def _setup_layout(self):
@@ -76,18 +76,16 @@ class MainWindow(QMainWindow):
         self.control_layout.addWidget(self.num_points_label)
         self.control_layout.addWidget(self.num_points_input)
         self.control_layout.addWidget(self.canvas)
-        
+
         # Настройка главного виджета
         self.main_widget.setLayout(self.control_layout)
         self.setCentralWidget(self.main_widget)
-        
+
         # Установка фокуса на холст
         self.canvas.setFocus()
 
     def _connect_signals(self):
-        self.speed_slider.valueChanged.connect(
-            partial(self.core.update_speed, self)
-        )
+        self.speed_slider.valueChanged.connect(partial(self.core.update_speed, self))
         self.num_points_input.valueChanged.connect(
             partial(self.core.update_num_points, self)
         )
