@@ -65,21 +65,21 @@ make run
 
 ## Run Options
 
-The application provides extensive options for configuring the simulation through command-line arguments:
-
-| Option          |  Type   | Description                                                                         |     Default      |
-|-----------------|:-------:|-------------------------------------------------------------------------------------|:----------------:|
-| --radius        | INTEGER | Sets the radius of displayed points (cats).                                         |     5 pixels     |
-| --image-path    | STRING  | Allows setting a path to an image that will be used as a texture for points (cats). |    no texture    |
-| --num-points    | INTEGER | Determines the number of points (cats) in the simulation.                           |       500        |
-| --fight-radius  | INTEGER | Sets the radius of the fight zone for cats. Must be smaller than hiss-radius.       |        15        |
-| --hiss-radius   | INTEGER | Sets the radius of the hissing zone for cats. Must be larger than fight-radius.     |        30        |
-| --window-width  | INTEGER | Sets the width of the application window.                                           |   1000 pixels    |
-| --window-height | INTEGER | Sets the height of the application window.                                          |    800 pixels    |
-| --debug         | BOOLEAN | Enables the debug mode for an additional message output.                            | disabled (false) |
+The application provides extensive options for configuring the simulation through command-line arguments.
 
 These settings allow users to easily adapt the simulation to their needs by changing visual parameters, the number of
 cats, and their interaction rules.
+
+| Option              | Description                                                                   |         Default         |
+|---------------------|-------------------------------------------------------------------------------|:-----------------------:|
+| --radius FLOAT      | set the radius of the points (cats)                                           |            5            |
+| --image-path PATH   | set a path to an image that will be used as a texture for points (cats)       | no texture (use colors) |
+| --num-points INT    | set the number of points (cats) in the simulation                             |       500 points        |
+| --fight-radius INT  | set the radius of the fight zone for cats, must be smaller than hiss-radius   |           15            |
+| --hiss-radius INT   | set the radius of the hissing zone for cats, must be larger than fight-radius |           30            |
+| --window-width INT  | set the width of the application window                                       |       1000 pixels       |
+| --window-height INT | set the height of the application window                                      |       800 pixels        |
+| --debug, --no-debug | enable debug messages                                                         |        disabled         |
 
 ## License
 
