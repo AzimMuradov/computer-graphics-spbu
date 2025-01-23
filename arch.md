@@ -40,3 +40,12 @@ Frontend делится на две логические части — ```Core`
 - ```Core``` интерфейс, описывает метод ```update_states```, который обновляет состояния точек на основе их позиций и размеров окна.
 - ```UpdateStatesWorker``` асинхронно обновляет состояния точек.
 - ```CanvasState``` хранит состояние канваса (zoom_factor, speed_factor и т.д)
+## Тестирование
+Тесты описаны в директории ```tests/test_drunk_cats_calculate_states.py```
+Тесты ниже проверяют различные сценарии взаимодействий между кошками (шипение, борьба)
+- ```test_single_cat``` тестирует поведение одной кошки. Проверяется, что кошка не взаимодействует с другими (состояние должно быть 0, что обозначает спокойное состояние).
+- ```test_two_cats_no_interactions```
+- ```test_two_cats_both_hiss```
+- ```test_two_cats_both_fight```
+- ```test_three_cats_two_fight_one_hiss```
+- ```test_four_cats_all_fighting```
