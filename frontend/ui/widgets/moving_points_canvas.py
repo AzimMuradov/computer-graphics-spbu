@@ -360,7 +360,7 @@ class MovingPointsCanvas(QOpenGLWidget):
 
     def mouseDoubleClickEvent(self, event):
         """Handle double click for point selection"""
-        if event is None:
+        if event is None or self.state.followed_cat_id is not None:
             return
 
         world_pos = self._get_world_coordinates(event.position())
