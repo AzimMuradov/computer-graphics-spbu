@@ -113,8 +113,6 @@ class MovingPointsCanvas(QOpenGLWidget):
 
         self.core_thread = QThread(parent=self)
 
-        self.follow_radius: float = RenderingConstants.DEFAULT_FOLLOW_RADIUS
-
         self.setFocusPolicy(
             Qt.FocusPolicy.ClickFocus
         )  # Widget receives focus when clicked

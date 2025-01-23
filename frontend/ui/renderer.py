@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 import numpy as np
 import moderngl
-from typing import Optional
+from typing import *
 
 
 @dataclass
@@ -21,6 +21,7 @@ class PointRenderer:
         self.ctx = ctx
         self.shader_program = shader_program
 
+    @no_type_check
     def setup_uniforms(self, state: RenderState):
         self.shader_program["pointRadius"].value = state.point_radius
         self.shader_program["zoom"].value = float(state.zoom_factor)
