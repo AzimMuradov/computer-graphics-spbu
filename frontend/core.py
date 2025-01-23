@@ -18,7 +18,7 @@ logger = logging.getLogger()
 
 
 class Backend(Protocol):
-    """Protocol defining the interface for the backend library."""
+    """Protocol defining the interface for the backend library"""
 
     def drunk_cats_configure(self, fight_radius: float, hiss_radius: float): ...
 
@@ -35,8 +35,6 @@ class Backend(Protocol):
 
 
 class ArgumentParser:
-    """Handles command line argument parsing"""
-
     @staticmethod
     def create_parser() -> argparse.ArgumentParser:
         parser = argparse.ArgumentParser(description="OpenGL Moving Points Application")
