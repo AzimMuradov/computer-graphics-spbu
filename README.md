@@ -35,20 +35,6 @@ At the same time, cats move within a limited area.
 
 ![followe_mode](https://github.com/user-attachments/assets/862c2ace-6f3d-46cc-a13d-86ef3864a352)
 
-
-## User Settings
-The application provides extensive options for configuring the simulation through command-line arguments:
-
-1. --radius: Sets the radius of displayed points (cats). Default: 5 pixels
-2. --image-path: Allows setting a path to an image that will be used as a texture for points. By default, no texture is used.
-3. --num-points: Determines the number of points (cats) in the simulation. Default: 500.
-4. --fight-radius: Sets the radius of the fight zone for cats. Must be smaller than hiss-radius. Default is 15.
-5. --hiss-radius: Sets the radius of the hissing zone for cats. Must be larger than fight-radius. Default is 30.
-6. --window-width: Sets the width of the application window. Default is 1000 pixels.
-7. --window-height: Sets the height of the application window. Default is 800 pixels.
-8. --debug: Enables debug mode for additional message output. Disabled by default (False).
-These settings allow users to easily adapt the simulation to their needs by changing visual parameters, the number of cats, and their interaction rules.
-
 ## Setup
 
 ```bash
@@ -76,6 +62,24 @@ make run
 ```bash
 ./.venv/Scripts/python main.py [OPTIONS]
 ```
+
+## Run Options
+
+The application provides extensive options for configuring the simulation through command-line arguments:
+
+| Option          |  Type   | Description                                                                         |     Default      |
+|-----------------|:-------:|-------------------------------------------------------------------------------------|:----------------:|
+| --radius        | INTEGER | Sets the radius of displayed points (cats).                                         |     5 pixels     |
+| --image-path    | STRING  | Allows setting a path to an image that will be used as a texture for points (cats). |    no texture    |
+| --num-points    | INTEGER | Determines the number of points (cats) in the simulation.                           |       500        |
+| --fight-radius  | INTEGER | Sets the radius of the fight zone for cats. Must be smaller than hiss-radius.       |        15        |
+| --hiss-radius   | INTEGER | Sets the radius of the hissing zone for cats. Must be larger than fight-radius.     |        30        |
+| --window-width  | INTEGER | Sets the width of the application window.                                           |   1000 pixels    |
+| --window-height | INTEGER | Sets the height of the application window.                                          |    800 pixels    |
+| --debug         | BOOLEAN | Enables the debug mode for an additional message output.                            | disabled (false) |
+
+These settings allow users to easily adapt the simulation to their needs by changing visual parameters, the number of
+cats, and their interaction rules.
 
 ## License
 
