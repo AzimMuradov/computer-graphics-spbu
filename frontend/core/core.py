@@ -111,14 +111,14 @@ class Core:
         backend_path = Path(__file__).parent.parent.parent / "backend" / "libbackend.so"
         return cast(Backend, self.ffi.dlopen(str(backend_path)))
 
-    def _configure_logging(self) -> None:
+    def _configure_logging(self):
         if self.args.debug:
             logger.setLevel(logging.DEBUG)
 
-    def _configure_backend(self) -> None:
+    def _configure_backend(self):
         self.lib.drunk_cats_configure(self.args.fight_radius, self.args.hiss_radius)
 
-    def main(self) -> None:
+    def main(self):
         self._configure_qt()
         app = QApplication(sys.argv)
         window = self._create_main_window()
@@ -126,7 +126,7 @@ class Core:
         self.start_ui(app, window)
 
     @staticmethod
-    def _configure_qt() -> None:
+    def _configure_qt():
         QSurfaceFormat.setDefaultFormat(create_surface_format())
         QApplication.setAttribute(Qt.ApplicationAttribute.AA_ShareOpenGLContexts, True)
         QApplication.setAttribute(Qt.ApplicationAttribute.AA_UseDesktopOpenGL)
@@ -141,14 +141,14 @@ class Core:
             core=self,
         )
 
-    def start_ui(self, app: QApplication, window: MainWindow) -> None:
+    def start_ui(self, app: QApplication, window: MainWindow):
         window.show()
         sys.exit(app.exec())
 
-    def update_num_points(self, window: MainWindow, num_points: int) -> None:
+    def update_num_points(self, window: MainWindow, num_points: int):
         window.update_num_points(num_points)
 
-    def update_speed(self, window: MainWindow, speed: int) -> None:
+    def update_speed(self, window: MainWindow, speed: int):
         window.update_speed(speed)
 
     def update_states(
@@ -170,7 +170,7 @@ class Core:
         return np.frombuffer(buffer=buffer, dtype=np.int32).copy()
 
     @staticmethod
-    def _log_debug_states(result: np.ndarray) -> None:
+    def _log_debug_states(result: np.ndarray):
         if logger.isEnabledFor(logging.DEBUG):
             mapping = {0: "calm", 1: "hisses", 2: "wants to fight"}
             log_obj = {i: mapping[state] for i, state in enumerate(result)}

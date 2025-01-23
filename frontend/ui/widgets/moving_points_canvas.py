@@ -66,7 +66,7 @@ class MovingPointsCanvas(QOpenGLWidget):
         image_path: Optional[str],
         r1: float,
         r2: float,
-    ) -> None:
+    ):
         """Initialize core components and parameters"""
         self.core = core
         self.state = CanvasState()
@@ -78,7 +78,7 @@ class MovingPointsCanvas(QOpenGLWidget):
         self.r1 = r1
         self.r2 = r2
 
-    def _init_state(self) -> None:
+    def _init_state(self):
         """Initialize state variables"""
         self.show_cursor_coords = False
         self.is_updating_states = False
@@ -92,7 +92,7 @@ class MovingPointsCanvas(QOpenGLWidget):
 
         self.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
 
-    def _setup_timers(self) -> None:
+    def _setup_timers(self):
         """Setup and start update timers"""
         # Position update timer
         self.timer = QTimer()
@@ -187,7 +187,7 @@ class MovingPointsCanvas(QOpenGLWidget):
     def resizeGL(self, w: int, h: int):
         self.ctx.viewport = (0, 0, w, h)
 
-    # Buffer Managment
+    # Buffer Management
 
     def init_buffers(self):
         # Create Vertex Buffer Object (VBO) for positions
@@ -234,12 +234,12 @@ class MovingPointsCanvas(QOpenGLWidget):
         self._update_camera_if_following()
         self._update_render_buffers()
 
-    def _update_point_positions(self) -> None:
+    def _update_point_positions(self):
         """Update positions based on current deltas"""
         interpolation_speed = 1.0 / RenderingConstants.FPS
         self.points += self.deltas * interpolation_speed
 
-    def _update_camera_if_following(self) -> None:
+    def _update_camera_if_following(self):
         """Update camera position when following a point"""
         if self.state.followed_cat_id is None:
             return
@@ -261,7 +261,7 @@ class MovingPointsCanvas(QOpenGLWidget):
             + target_pos * CameraSettings.SMOOTHNESS
         )
 
-    def _update_render_buffers(self) -> None:
+    def _update_render_buffers(self):
         """Update render buffers if states match points"""
         if len(self.points) == len(self.states):
             self.vbo.write(self.points.astype("f4").tobytes())
@@ -283,7 +283,7 @@ class MovingPointsCanvas(QOpenGLWidget):
         self.is_updating_states = True  # Mark as running
         self._start_state_update_worker()
 
-    def _start_state_update_worker(self) -> None:
+    def _start_state_update_worker(self):
         """Initialize and start state update worker thread"""
         self.core_thread = QThread(parent=self)
         self.worker = UpdateStatesWorker(
@@ -293,7 +293,7 @@ class MovingPointsCanvas(QOpenGLWidget):
         self._setup_worker_connections()
         self.core_thread.start()
 
-    def _setup_worker_connections(self) -> None:
+    def _setup_worker_connections(self):
         """Setup signal connections for worker thread"""
         self.worker.moveToThread(self.core_thread)
 
