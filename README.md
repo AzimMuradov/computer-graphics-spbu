@@ -1,39 +1,46 @@
 # drunk-cats
-<img src=https://github.com/user-attachments/assets/a1649bd3-85f6-479a-86d0-83d4a1cd2cea alt="logo" width="100" align="right">
 
-drunk-cats is an application for simulating the interaction of objects with specific behavior patterns in a limited area, providing several additional features and flexible configuration of simulation parameters. Cats were chosen as the model objects :)
+<img src=https://github.com/user-attachments/assets/a1649bd3-85f6-479a-86d0-83d4a1cd2cea alt="logo" width="100" style="float: right; margin-left: 16px; margin-bottom: 16px">
 
-## Interaction
+**drunk-cats** is an application for
+**simulating the interactions between objects with specific behavior patterns in a limited area**,
+**providing several additional features** and
+**flexible configuration of simulation parameters**.
+
+Cats were chosen just as the model objects :smile_cat:
+
+## Interactions
+
 Expressed by the following rules:
-1. If two cats are at a distance not exceeding r_0, they try to start a fight with a probability of 1.
 
-2. If two cats are at a distance R_0>r_0, they start hissing with a probability inversely proportional to the square of the distance between them.
+1. If two cats are at a distance not exceeding r, they try to start a fight with a probability of 1.
+
+2. If two cats are at a distance R > r, they start hissing with a probability inversely proportional to the square of
+   the distance between them.
 
 3. If there are no rivals around the cat, it calmly walks.
 
 At the same time, cats move within a limited area.
 
 ## Features
-1. Supports over 500,000 cats for rendering
-![demo](https://github.com/user-attachments/assets/3248153a-149c-4a5a-933b-c1b3c414fe72)
 
-*20,000 chosen for comfortable demo*
+1. Supports over 500_000 cats for rendering
+   ![many_cats_demo](https://github.com/user-attachments/assets/3248153a-149c-4a5a-933b-c1b3c414fe72)
+   *20_000 chosen for comfortable demo*
 
-3. Zoom and drag the screen for better viewing experience
+2. You can zoom and drag the screen for better viewing experience
+   ![zoom_and_drug_demo](https://github.com/user-attachments/assets/4333d5c0-2ce7-4a2a-a249-625ded57682c)
 
-![zoom_and_drug](https://github.com/user-attachments/assets/4333d5c0-2ce7-4a2a-a249-625ded57682c)
+3. Cats can leave and return to the visible portion of the map
 
-3. Cats can leave the map
+4. You can set a custom image for the cats
 
-4. Ability to set custom images instead of points
-
-5. Logging of cat interactions
-   
-![logging](https://github.com/user-attachments/assets/7a690f41-5188-4f62-9e35-d3dbad194059)
+5. You can turn on logs of cat interactions
+   ![logging_demo](https://github.com/user-attachments/assets/7a690f41-5188-4f62-9e35-d3dbad194059)
 
 6. "Follow" mode for a specific cat
-
-![followe_mode](https://github.com/user-attachments/assets/862c2ace-6f3d-46cc-a13d-86ef3864a352)
+   **Double-click** on the cat you want to follow (labeled with :star:), and **press 'F'** to release him
+   ![follow_mode](https://github.com/user-attachments/assets/862c2ace-6f3d-46cc-a13d-86ef3864a352)
 
 ## Setup
 
