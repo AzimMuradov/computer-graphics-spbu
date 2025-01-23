@@ -187,7 +187,7 @@ class MovingPointsCanvas(QOpenGLWidget):
     def resizeGL(self, w: int, h: int):
         self.ctx.viewport = (0, 0, w, h)
 
-    # Buffer Managment
+    # Buffer Management
 
     def init_buffers(self):
         # Create Vertex Buffer Object (VBO) for positions
