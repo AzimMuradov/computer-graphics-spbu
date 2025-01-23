@@ -80,8 +80,6 @@ class MovingPointsCanvas(QOpenGLWidget):
 
     def _init_state(self) -> None:
         """Initialize state variables"""
-        self.mouse_dragging = False
-        self.last_mouse_pos: Optional[QPointF] = None
         self.show_cursor_coords = False
         self.is_updating_states = False
         self.cursor_coords = np.zeros(2, dtype=np.float64)
@@ -338,8 +336,9 @@ class MovingPointsCanvas(QOpenGLWidget):
 
     def mouseMoveEvent(self, event: QMouseEvent | None):
         """Handle mouse movement for panning"""
-        if event is None or self.last_mouse_pos is None:
+        if event is None or self.input_handler.last_mouse_pos is None:
             return
+
         new_pan_offset = self.input_handler.handle_mouse_move(
             event,
             self.width(),
