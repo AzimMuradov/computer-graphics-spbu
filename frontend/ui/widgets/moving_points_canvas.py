@@ -393,7 +393,6 @@ class MovingPointsCanvas(QOpenGLWidget):
     def keyPressEvent(self, event):
         if event is None:
             return
-        F_KEY = 0x46
-        if event.nativeVirtualKey() == F_KEY:
+        if event.key() == Qt.Key.Key_F:
             self.stop_following()
             self.update()
