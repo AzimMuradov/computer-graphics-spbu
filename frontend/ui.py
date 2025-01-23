@@ -3,6 +3,7 @@ from __future__ import annotations
 from frontend.constants import RenderingConstants, UpdateIntervals, CameraSettings, OpenGLSettings
 from frontend.shaders.shader_source import VERTEX_SHADER, FRAGMENT_SHADER
 from frontend.workers.state_updater import UpdateStatesWorker
+from frontend.rendering.renderer import RenderState, PointRenderer
 
 from functools import partial
 from time import time
@@ -199,31 +200,6 @@ class MovingPointsCanvas(QOpenGLWidget):
             self.state_buffer.write(self.states.astype("i4").tobytes())
         self.update()
 
-    def initializeGL(self):
-        self.ctx = moderngl.create_context()
-        self.ctx.enable(moderngl.PROGRAM_POINT_SIZE)
-        self.ctx.enable(moderngl.BLEND)
-        self.ctx.enable_direct(GL_POINT_SPRITE)
-        self.ctx.enable_direct(GL_MULTISAMPLE)
-
-        self.indices = np.arange(self.num_points, dtype=np.int32)
-        self.index_buffer = self.ctx.buffer(self.indices.tobytes())
-
-        # Compile shaders and create program
-
-        self.shader_program = self.ctx.program(
-            vertex_shader=VERTEX_SHADER,
-            fragment_shader=FRAGMENT_SHADER,
-        )
-
-        # Load texture if an image path is provided
-
-        if self.use_texture:
-            self.texture = self.load_texture(self.image_path)
-        # Initialize buffers
-
-        self.init_buffers()
-
     def init_buffers(self):
         # Create Vertex Buffer Object (VBO) for positions
 
@@ -253,39 +229,55 @@ class MovingPointsCanvas(QOpenGLWidget):
         self.vbo.write(self.points.astype("f4").tobytes())
         self.state_buffer.write(self.states.astype("i4").tobytes())
 
+    def initializeGL(self):
+        self.ctx = moderngl.create_context()
+        self.ctx.enable(moderngl.PROGRAM_POINT_SIZE)
+        self.ctx.enable(moderngl.BLEND)
+        self.ctx.enable_direct(GL_POINT_SPRITE)
+        self.ctx.enable_direct(GL_MULTISAMPLE)
+
+        self.indices = np.arange(self.num_points, dtype=np.int32)
+        self.index_buffer = self.ctx.buffer(self.indices.tobytes())
+
+        # Compile shaders and create program
+        self.shader_program = self.ctx.program(
+            vertex_shader=VERTEX_SHADER,
+            fragment_shader=FRAGMENT_SHADER,
+        )
+
+        # Load texture if an image path is provided
+        if self.use_texture:
+            self.texture = self.load_texture(self.image_path)
+        
+        self.renderer = PointRenderer(self.ctx, self.shader_program)
+        
+        # Initialize buffers
+        self.init_buffers()
+
     @no_type_check
     def paintGL(self):
         self.fb = self.ctx.detect_framebuffer(self.defaultFramebufferObject())
         self.fb.clear()
         self.fb.use()
 
+
+        render_state = RenderState(
+            points = self.points,
+            states = self.states,
+            followed_cat_id=self.followed_cat_id,
+            zoom_factor=self.zoom_factor,
+            pan_offset=self.pan_offset,
+            point_radius=self.point_radius,
+            follow_radius=self.follow_radius,
+            use_texture=self.use_texture
+        )
         # Set shader uniforms
 
-        self.shader_program["pointRadius"].value = self.point_radius
-        self.shader_program["zoom"].value = float(self.zoom_factor)
-        self.shader_program["panOffset"].value = tuple(self.pan_offset)
-        self.shader_program["useTexture"].value = self.use_texture
-        self.shader_program["highlightedIndex"].value = (
-            self.followed_cat_id if self.followed_cat_id is not None else -1
-        )
+        self.renderer.setup_uniforms(render_state)
+        visible_points, visible_states = self.renderer.get_visible_points(render_state)
 
-        # Bind the texture if used
-
-        if self.use_texture:
-            self.texture.use(0)
-            self.shader_program["pointTexture"].value = 0
-        if self.followed_cat_id is not None:
-            followed_cat_pos = self.points[self.followed_cat_id]
-            distances = np.linalg.norm(self.points - followed_cat_pos, axis=1)
-            visible_indices = distances <= self.follow_radius
-            visible_points = self.points[visible_indices]
-            visible_states = self.states[visible_indices]
-        else:
-            visible_points = self.points
-            visible_states = self.states
         self.vbo.write(visible_points.astype("f4").tobytes())
         self.state_buffer.write(visible_states.astype("i4").tobytes())
-        # Render the points
 
         self.update_buffers()
         self.vao.render(moderngl.POINTS, vertices=self.num_points)
