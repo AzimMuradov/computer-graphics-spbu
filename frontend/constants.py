@@ -7,6 +7,8 @@ class RenderingConstants:
     DEFAULT_NUM_POINTS: int = 500
     DEFAULT_ZOOM_FACTOR: float = 1.0
     DEFAULT_FOLLOW_RADIUS: float = 0.5
+    DEFAULT_R1: float = 0.1
+    DEFAULT_R2: float = 0.1
     
 @dataclass
 class UpdateIntervals:

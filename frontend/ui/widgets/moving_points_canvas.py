@@ -1,52 +1,62 @@
 from __future__ import annotations
 
+from typing import *
+
 from frontend.constants import RenderingConstants, UpdateIntervals, CameraSettings, OpenGLSettings
 from frontend.ui.shader_source import VERTEX_SHADER, FRAGMENT_SHADER
 from frontend.ui.state_updater import UpdateStatesWorker
 from frontend.ui.renderer import RenderState, PointRenderer
-from frontend.canvas_state import CanvasState
+from frontend.ui.canvas_state import CanvasState
 from frontend.ui.input_handler import InputHandler
 
-from typing import *
-from PyQt6.QtGui import (
-    QMovie,
-    QSurfaceFormat,
-    QWheelEvent,
-    QMouseEvent,
-)
+from PyQt6.QtGui import QMovie, QSurfaceFormat, QWheelEvent, QMouseEvent
 import moderngl
 import numpy as np
-from OpenGL.GL import *
+from OpenGL.GL import GL_POINT_SPRITE, GL_MULTISAMPLE
 from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal, QPointF
 from PyQt6.QtGui import QImage
 from PyQt6.QtOpenGLWidgets import QOpenGLWidget
 from frontend.core.protocol import Core
 
-def qt_surface_format():
+def create_surface_format() -> QSurfaceFormat:
+    """Creates and configures OpenGL surface format"""
     fmt = QSurfaceFormat()
     fmt.setVersion(OpenGLSettings.VERSION_MAJOR, OpenGLSettings.VERSION_MINOR)
     fmt.setProfile(QSurfaceFormat.OpenGLContextProfile.CoreProfile)
     fmt.setSamples(OpenGLSettings.SAMPLES)
-    fmt.setDepthBufferSize(OpenGLSettings.DEPTH_BUFFER_SIZE)
+    fmt.setDepthBufferSize(OpenGLSettings.DEPTH_BUFFER_SIZE) 
     fmt.setStencilBufferSize(OpenGLSettings.STENCIL_BUFFER_SIZE)
     return fmt
 
-
 class MovingPointsCanvas(QOpenGLWidget):
+    """Canvas widget for rendering and managing moving points"""
 
     follow_mode_changed = pyqtSignal(bool)
 
     def __init__(
         self,
         core: Core,
-        point_radius=RenderingConstants.DEFAULT_POINT_RADIUS,
-        num_points=RenderingConstants.DEFAULT_NUM_POINTS,
-        image_path=None,
-        r1: float = 0.1,
-        r2: float = 0.1,
+        point_radius: float = RenderingConstants.DEFAULT_POINT_RADIUS,
+        num_points: int = RenderingConstants.DEFAULT_NUM_POINTS,
+        image_path: Optional[str] = None,
+        r1: float = RenderingConstants.DEFAULT_R1,
+        r2: float = RenderingConstants.DEFAULT_R2,
     ):
         super().__init__()
-        self.setFormat(qt_surface_format())
+        self.setFormat(create_surface_format())
+        
+        # Initialize core components
+        self._init_core_components(core, point_radius, num_points, image_path, r1, r2)
+        
+        # Setup timers
+        self._setup_timers()
+        
+        # Initialize state
+        self._init_state()
+
+    def _init_core_components(self, core: Core, point_radius: float, num_points: int, 
+                            image_path: Optional[str], r1: float, r2: float) -> None:
+        """Initialize core components and parameters"""
         self.core = core
         self.state = CanvasState()
         self.input_handler = InputHandler()
@@ -54,38 +64,43 @@ class MovingPointsCanvas(QOpenGLWidget):
         self.num_points = num_points
         self.image_path = image_path
         self.use_texture = image_path is not None
-        self.mouse_dragging = False  # Track if mouse is dragging
-        self.last_mouse_pos: QPointF | None = None  # Last mouse position for panning
-        self.show_cursor_coords = False  # Flag to toggle cursor display
-        self.is_updating_states = False
-        self.cursor_coords = np.array(
-            [0.0, 0.0], dtype=np.float64
-        )  # Store cursor coordinates
         self.r1 = r1
         self.r2 = r2
 
-        # Generate random points and directions
+    def _init_state(self) -> None:
+        """Initialize state variables"""
+        self.mouse_dragging = False
+        self.last_mouse_pos: Optional[QPointF] = None
+        self.show_cursor_coords = False
+        self.is_updating_states = False
+        self.cursor_coords = np.zeros(2, dtype=np.float64)
+        self.follow_radius = RenderingConstants.DEFAULT_FOLLOW_RADIUS
+        
+        # Generate initial points and states
         self.points = self.core.generate_points(self.num_points, self.state.zoom_factor)
         self.states = np.zeros(self.num_points, dtype=int)
+        self.update_deltas()
 
-        # Timer for updating points
+        self.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
+
+    def _setup_timers(self) -> None:
+        """Setup and start update timers"""
+        # Position update timer
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_positions)
         self.timer.start(UpdateIntervals.POSITION_UPDATE)
 
-        self.core_thread = QThread(parent=self)
-
-        # Initial target positions as current positions
-
-        self.update_deltas()
-
+        # Target update timer
         self.target_update_timer = QTimer()
         self.target_update_timer.timeout.connect(self.update_deltas)
-        self.target_update_timer.start(500)  # Update targets every 0.5 seconds
+        self.target_update_timer.start(UpdateIntervals.TARGET_UPDATE)
 
+        # State update timer
         self.state_update_timer = QTimer()
         self.state_update_timer.timeout.connect(self.update_states)
-        self.state_update_timer.start(500)
+        self.state_update_timer.start(UpdateIntervals.STATE_UPDATE)
+
+        self.core_thread = QThread(parent=self)
 
         self.follow_radius: float = RenderingConstants.DEFAULT_FOLLOW_RADIUS
 

@@ -10,7 +10,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QSurfaceFormat
 from PyQt6.QtWidgets import QApplication
 
-from frontend.ui.widgets.moving_points_canvas import MovingPointsCanvas, qt_surface_format
+from frontend.ui.widgets.moving_points_canvas import MovingPointsCanvas, create_surface_format
 from frontend.ui.widgets.main_window import MainWindow
 from frontend.constants import RenderingConstants
 
@@ -117,7 +117,7 @@ class Core:
 
     @staticmethod
     def _configure_qt() -> None:
-        QSurfaceFormat.setDefaultFormat(qt_surface_format())
+        QSurfaceFormat.setDefaultFormat(create_surface_format())
         QApplication.setAttribute(Qt.ApplicationAttribute.AA_ShareOpenGLContexts, True)
         QApplication.setAttribute(Qt.ApplicationAttribute.AA_UseDesktopOpenGL)
 

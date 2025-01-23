@@ -1,4 +1,3 @@
-# frontend/handlers/input_handler.py
 from PyQt6.QtCore import Qt, QPointF
 from PyQt6.QtGui import QMouseEvent, QWheelEvent
 import numpy as np
