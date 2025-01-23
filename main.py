@@ -1,4 +1,4 @@
-from frontend.core import Core
+from frontend.core.core import Core
 
 
 def main():
