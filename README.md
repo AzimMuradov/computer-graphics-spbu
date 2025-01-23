@@ -1,11 +1,10 @@
 # drunk-cats
 
-<img src=https://github.com/user-attachments/assets/a1649bd3-85f6-479a-86d0-83d4a1cd2cea alt="logo" width="100" style="float: right; margin-left: 16px; margin-bottom: 16px">
+<img src=https://github.com/user-attachments/assets/a1649bd3-85f6-479a-86d0-83d4a1cd2cea alt="logo" width="100" align="right" style="margin-left: 16px; margin-bottom: 16px">
 
-**drunk-cats** is an application for
-**simulating the interactions between objects with specific behavior patterns in a limited area**,
-**providing several additional features** and
-**flexible configuration of simulation parameters**.
+**drunk-cats** is an application for simulating the interactions between objects in a limited area.
+The objects have specific behavior patterns (see [interactions](#interactions)).
+The app is also have a quite flexible configuration of simulation parameters (see [run options](#run-options)).
 
 Cats were chosen just as the model objects :smile_cat:
 
@@ -25,22 +24,28 @@ At the same time, cats move within a limited area.
 ## Features
 
 1. Supports over 500_000 cats for rendering
-   ![many_cats_demo](https://github.com/user-attachments/assets/3248153a-149c-4a5a-933b-c1b3c414fe72)
-   *20_000 chosen for comfortable demo*
+
+![many_cats_demo](https://github.com/user-attachments/assets/3248153a-149c-4a5a-933b-c1b3c414fe72)
+
+*20_000 chosen for comfortable demo*
 
 2. You can zoom and drag the screen for better viewing experience
-   ![zoom_and_drug_demo](https://github.com/user-attachments/assets/4333d5c0-2ce7-4a2a-a249-625ded57682c)
+
+![zoom_and_drug_demo](https://github.com/user-attachments/assets/4333d5c0-2ce7-4a2a-a249-625ded57682c)
 
 3. Cats can leave and return to the visible portion of the map
 
 4. You can set a custom image for the cats
 
 5. You can turn on logs of cat interactions
-   ![logging_demo](https://github.com/user-attachments/assets/7a690f41-5188-4f62-9e35-d3dbad194059)
+
+![logging_demo](https://github.com/user-attachments/assets/7a690f41-5188-4f62-9e35-d3dbad194059)
 
 6. "Follow" mode for a specific cat
-   **Double-click** on the cat you want to follow (labeled with :star:), and **press 'F'** to release him
-   ![follow_mode](https://github.com/user-attachments/assets/862c2ace-6f3d-46cc-a13d-86ef3864a352)
+
+**Double-click** on the cat you want to follow (labeled with :star:), and **press 'F'** to release him
+
+![follow_mode](https://github.com/user-attachments/assets/862c2ace-6f3d-46cc-a13d-86ef3864a352)
 
 ## Setup
 
