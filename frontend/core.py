@@ -11,6 +11,7 @@ from PyQt6.QtGui import QSurfaceFormat
 from PyQt6.QtWidgets import QApplication
 
 from frontend.ui import MainWindow, MovingPointsCanvas, qt_surface_format
+from frontend.constants import RenderingConstants
 
 # Set up logger
 logging.basicConfig()
@@ -39,7 +40,7 @@ class ArgumentParser:
     def create_parser() -> argparse.ArgumentParser:
         parser = argparse.ArgumentParser(description="OpenGL Moving Points Application")
         parser.add_argument(
-            "--radius", type=float, default=10, help="Radius of the points"
+            "--radius", type=float, default=RenderingConstants.DEFAULT_POINT_RADIUS, help="Radius of the points"
         )
         parser.add_argument(
             "--image-path",
@@ -48,7 +49,7 @@ class ArgumentParser:
             help="Path to the image file for point texture",
         )
         parser.add_argument(
-            "--num-points", type=int, default=500, help="Number of points"
+            "--num-points", type=int, default=RenderingConstants.DEFAULT_NUM_POINTS, help="Number of points"
         )
         parser.add_argument(
             "--fight-radius",

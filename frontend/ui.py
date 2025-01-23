@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from frontend.constants import RenderingConstants, UpdateIntervals, CameraSettings, OpenGLSettings
 from frontend.shaders.shader_source import VERTEX_SHADER, FRAGMENT_SHADER
+from frontend.workers.state_updater import UpdateStatesWorker
 
 from functools import partial
 from time import time
@@ -33,11 +35,11 @@ from PyQt6.QtOpenGLWidgets import QOpenGLWidget
 
 def qt_surface_format():
     fmt = QSurfaceFormat()
-    fmt.setVersion(4, 1)
+    fmt.setVersion(OpenGLSettings.VERSION_MAJOR, OpenGLSettings.VERSION_MINOR)
     fmt.setProfile(QSurfaceFormat.OpenGLContextProfile.CoreProfile)
-    fmt.setSamples(4)
-    fmt.setDepthBufferSize(24)
-    fmt.setStencilBufferSize(8)
+    fmt.setSamples(OpenGLSettings.SAMPLES)
+    fmt.setDepthBufferSize(OpenGLSettings.DEPTH_BUFFER_SIZE)
+    fmt.setStencilBufferSize(OpenGLSettings.STENCIL_BUFFER_SIZE)
     return fmt
 
 
@@ -57,36 +59,15 @@ class Core(Protocol):
 # Worker class to handle the heavy computation
 
 
-class UpdateStatesWorker(QObject):
-    finished = pyqtSignal(np.ndarray)  # Signal to return the result
-
-    def __init__(
-        self, core: Core, num_points: int, points: np.ndarray, width: int, height: int
-    ):
-        super().__init__()
-        self.core = core
-        self.num_points = num_points
-        self.points = points
-        self.width = width
-        self.height = height
-
-    def run(self):
-        states = self.core.update_states(
-            self.num_points, self.points, self.width, self.height
-        )
-        self.finished.emit(states)  # Emit the result when done
-
-
 class MovingPointsCanvas(QOpenGLWidget):
 
-    FPS = 100
     follow_mode_changed = pyqtSignal(bool)
 
     def __init__(
         self,
         core: Core,
-        point_radius=5,
-        num_points=50000,
+        point_radius=RenderingConstants.DEFAULT_POINT_RADIUS,
+        num_points=RenderingConstants.DEFAULT_NUM_POINTS,
         image_path=None,
         r1: float = 0.1,
         r2: float = 0.1,
@@ -98,7 +79,7 @@ class MovingPointsCanvas(QOpenGLWidget):
         self.num_points = num_points
         self.image_path = image_path
         self.use_texture = image_path is not None
-        self.zoom_factor = 1.0  # Initial zoom factor
+        self.zoom_factor = RenderingConstants.DEFAULT_ZOOM_FACTOR
         self.pan_offset = np.array([0.0, 0.0], dtype=np.float64)  # Initial pan offset
         self.mouse_dragging = False  # Track if mouse is dragging
         self.last_mouse_pos: QPointF | None = None  # Last mouse position for panning
@@ -110,11 +91,6 @@ class MovingPointsCanvas(QOpenGLWidget):
         self.speed_factor = 1.0  # Initial speed factor
         self.r1 = r1
         self.r2 = r2
-
-        # self.handler = GhostWidget(self)
-        # self.handler.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        # self.handler.setAttribute(Qt.WidgetAttribute.WA_AcceptTouchEvents, True)
-        # self.setFocusProxy(self.handler)
 
         # Generate random points and directions
 
@@ -141,7 +117,7 @@ class MovingPointsCanvas(QOpenGLWidget):
         self.timer.timeout.connect(self.update_positions)
 
         self.followed_cat_id: int | None = None
-        self.follow_radius: float = 0.5
+        self.follow_radius: float = RenderingConstants.DEFAULT_FOLLOW_RADIUS
 
         self.setFocusPolicy(
             Qt.FocusPolicy.ClickFocus
@@ -196,7 +172,7 @@ class MovingPointsCanvas(QOpenGLWidget):
         self.update()
 
     def update_positions(self):
-        interpolation_speed = 1.0 / self.FPS
+        interpolation_speed = 1.0 / RenderingConstants.FPS
         self.points += self.deltas * interpolation_speed
 
         # If tracking is enabled, center the camera on the selected cat
@@ -204,23 +180,20 @@ class MovingPointsCanvas(QOpenGLWidget):
         if self.followed_cat_id is not None:
             followed_cat_pos = self.points[self.followed_cat_id]
 
-            smoothness = 0.1  # Smoothness coefficient
-
             target_x = -followed_cat_pos[0]
             target_y = -followed_cat_pos[1]
 
             # Smoothly move camera to target position
-
             self.pan_offset[0] = (
-                self.pan_offset[0] * (1 - smoothness) + target_x * smoothness
+                self.pan_offset[0] * (1 - CameraSettings.SMOOTHNESS) + target_x * CameraSettings.SMOOTHNESS
             )
             self.pan_offset[1] = (
-                self.pan_offset[1] * (1 - smoothness) + target_y * smoothness
+                self.pan_offset[1] * (1 - CameraSettings.SMOOTHNESS) + target_y * CameraSettings.SMOOTHNESS
             )
 
-            self.zoom_factor = 3.00 / self.follow_radius
-        # Update VBO and state buffer with new data
+            self.zoom_factor = CameraSettings.FOLLOW_ZOOM_RATIO / self.follow_radius
 
+        # Update VBO and state buffer with new data
         if len(self.points) == len(self.states):
             self.vbo.write(self.points.astype("f4").tobytes())
             self.state_buffer.write(self.states.astype("i4").tobytes())
