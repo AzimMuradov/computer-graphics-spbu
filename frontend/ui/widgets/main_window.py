@@ -1,4 +1,3 @@
-# frontend/widgets/main_window.py
 from functools import partial
 from PyQt6.QtWidgets import (
     QMainWindow,
@@ -29,30 +28,20 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Optimized Moving Points Field with OpenGL")
         self.core = core
 
-        # Создание основного виджета и компоновки
         self.main_widget = QWidget()
         self.control_layout = QVBoxLayout()
 
-        # Инициализация элементов управления
         self._init_controls(num_points)
-
-        # Инициализация холста
         self._init_canvas(point_radius, num_points, image_path)
-
-        # Настройка компоновки
         self._setup_layout()
-
-        # Подключение сигналов
         self._connect_signals()
 
     def _init_controls(self, num_points: int):
-        # Контроль количества точек
         self.num_points_label = QLabel("Number of Points:")
         self.num_points_input = QSpinBox()
         self.num_points_input.setRange(1, 1000000)
         self.num_points_input.setValue(num_points)
 
-        # Контроль скорости
         self.speed_slider = QSlider(Qt.Orientation.Horizontal)
         self.speed_slider.setRange(1, 1000)
         self.speed_slider.setValue(200)
@@ -70,18 +59,15 @@ class MainWindow(QMainWindow):
         )
 
     def _setup_layout(self):
-        # Добавление элементов управления
         self.control_layout.addWidget(self.speed_label)
         self.control_layout.addWidget(self.speed_slider)
         self.control_layout.addWidget(self.num_points_label)
         self.control_layout.addWidget(self.num_points_input)
         self.control_layout.addWidget(self.canvas)
 
-        # Настройка главного виджета
         self.main_widget.setLayout(self.control_layout)
         self.setCentralWidget(self.main_widget)
 
-        # Установка фокуса на холст
         self.canvas.setFocus()
 
     def _connect_signals(self):
