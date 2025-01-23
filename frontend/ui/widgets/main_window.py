@@ -100,4 +100,4 @@ class MainWindow(QMainWindow):
         self.canvas.update_num_points(value)
 
     def update_speed(self, value: int):
-        self.canvas.speed_factor = 1.5 ** ((value - 200) / 20)
+        self.canvas.state.speed_factor = 1.5 ** ((value - 200) / 40)
