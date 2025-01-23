@@ -43,7 +43,7 @@ class ArgumentParser:
     @staticmethod
     def create_parser() -> argparse.ArgumentParser:
         parser = argparse.ArgumentParser(
-            description="OpenGL Moving Points Application",
+            description="Drunk Cats",
             formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         )
         parser.add_argument(
