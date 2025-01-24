@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import *
 
 from frontend.constants import (
@@ -74,7 +75,7 @@ class MovingPointsCanvas(QOpenGLWidget):
         self.point_radius = point_radius
         self.num_points = num_points
         self.image_path = image_path
-        self.use_texture = image_path is not None
+        self.use_texture = True
         self.r1 = r1
         self.r2 = r2
 
@@ -135,9 +136,9 @@ class MovingPointsCanvas(QOpenGLWidget):
 
         # Load texture if an image path is provided
         if self.use_texture:
-            self.texture = self.load_texture(self.image_path)
+            self.textures = self.load_textures()
 
-        self.renderer = PointRenderer(self.ctx, self.shader_program)
+        self.renderer = PointRenderer(self.ctx, self.shader_program, self.textures)
 
         # Initialize buffers
         self.init_buffers()
@@ -154,6 +155,30 @@ class MovingPointsCanvas(QOpenGLWidget):
         texture = self.ctx.texture((width, height), 4, data)
         texture.use()
         return texture
+
+    def load_textures(self) -> Dict[int, moderngl.Texture]:
+        texture_paths = self._get_texture_pathes()
+        textures = {}
+        for state, path in texture_paths.items():
+            image = QImage(path.as_posix()).convertToFormat(QImage.Format.Format_RGBA8888)
+            width, height = image.width(), image.height()
+            bits = image.bits()
+            if bits is None:
+                raise Exception()
+            data = bits.asstring(width * height * 4)
+            texture = self.ctx.texture((width, height), 4, data)
+            texture.build_mipmaps()
+            textures[state] = texture
+        return textures
+
+    def _get_texture_pathes(self) -> dict[int, Path]:
+        base_dir = Path(__file__).parent.parent.parent.parent / "data"
+
+        return {
+            0: base_dir / "calm_cat.png",
+            1: base_dir / "angry_cat.png",
+            2: base_dir / "fight_cat.png"
+        }
 
     @no_type_check
     def paintGL(self):
