@@ -17,9 +17,15 @@ class RenderState:
 
 
 class PointRenderer:
-    def __init__(self, ctx: moderngl.Context, shader_program: moderngl.Program):
+    def __init__(
+        self,
+        ctx: moderngl.Context,
+        shader_program: moderngl.Program,
+        textures: list[moderngl.Texture],
+    ):
         self.ctx = ctx
         self.shader_program = shader_program
+        self.textures = textures
 
     @no_type_check
     def setup_uniforms(self, state: RenderState):
@@ -30,6 +36,14 @@ class PointRenderer:
         self.shader_program["highlightedIndex"].value = (
             state.followed_cat_id if state.followed_cat_id is not None else -1
         )
+        if state.use_texture:
+            self.shader_program["pointRadius"].value = state.point_radius * 4
+            self.textures[0].use(location=0)
+            self.shader_program["stateTexture0"] = 0
+            self.textures[1].use(location=1)
+            self.shader_program["stateTexture1"] = 1
+            self.textures[2].use(location=2)
+            self.shader_program["stateTexture2"] = 2
 
     def get_visible_points(self, state: RenderState) -> tuple[np.ndarray, np.ndarray]:
         if state.followed_cat_id is not None:
