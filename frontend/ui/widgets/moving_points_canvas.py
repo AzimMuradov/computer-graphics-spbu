@@ -16,6 +16,7 @@ from frontend.ui.canvas_state import CanvasState
 from frontend.ui.input_handler import InputHandler
 
 from PyQt6.QtGui import QMovie, QSurfaceFormat, QWheelEvent, QMouseEvent
+from PyQt6.QtWidgets import QCheckBox, QVBoxLayout, QWidget
 import moderngl
 import numpy as np
 from OpenGL.GL import GL_POINT_SPRITE, GL_MULTISAMPLE

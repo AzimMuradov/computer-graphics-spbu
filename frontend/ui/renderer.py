@@ -32,7 +32,7 @@ class PointRenderer:
             state.followed_cat_id if state.followed_cat_id is not None else -1
         )
         if state.use_texture:
-            self.shader_program["pointRadius"].value = state.point_radius * 3
+            self.shader_program["pointRadius"].value = state.point_radius * 4
             self.textures[0].use(location=0)  # Привязка текстуры для state = 0
             self.shader_program['stateTexture0'] = 0
             self.textures[1].use(location=1)
