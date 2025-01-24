@@ -42,12 +42,15 @@ class Backend(Protocol):
 class ArgumentParser:
     @staticmethod
     def create_parser() -> argparse.ArgumentParser:
-        parser = argparse.ArgumentParser(description="OpenGL Moving Points Application")
+        parser = argparse.ArgumentParser(
+            description="Drunk Cats",
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        )
         parser.add_argument(
             "--radius",
             type=float,
             default=RenderingConstants.DEFAULT_POINT_RADIUS,
-            help="Radius of the points",
+            help="set the radius of the points (cats)",
         )
         parser.add_argument(
             "--use-texture",
@@ -58,28 +61,36 @@ class ArgumentParser:
             "--num-points",
             type=int,
             default=RenderingConstants.DEFAULT_NUM_POINTS,
-            help="Number of points",
+            help="set the number of points (cats) in the simulation",
         )
         parser.add_argument(
             "--fight-radius",
             type=int,
             default=15,
-            help="Radius of the cat's fight zone, must be smaller than hiss-radius",
+            help="set the radius of the fight zone for cats, must be smaller than hiss-radius",
         )
         parser.add_argument(
             "--hiss-radius",
             type=int,
             default=30,
-            help="Radius of the cat's hiss zone, must be larger than fight-radius",
+            help="set the radius of the hissing zone for cats, must be larger than fight-radius",
         )
         parser.add_argument(
-            "--window-width", type=int, default=1000, help="Width of the window"
+            "--window-width",
+            type=int,
+            default=1000,
+            help="set the width of the application window",
         )
         parser.add_argument(
-            "--window-height", type=int, default=800, help="Height of the window"
+            "--window-height",
+            type=int,
+            default=800,
+            help="set the height of the application window",
         )
         parser.add_argument(
-            "--debug", type=bool, default=False, help="Enable debug messages"
+            "--debug",
+            action=argparse.BooleanOptionalAction,
+            help="enable debug messages",
         )
         return parser
 

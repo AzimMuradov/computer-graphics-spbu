@@ -4,7 +4,7 @@ from dataclasses import dataclass
 @dataclass
 class RenderingConstants:
     FPS: int = 100
-    DEFAULT_POINT_RADIUS: int = 5
+    DEFAULT_POINT_RADIUS: float = 5
     DEFAULT_NUM_POINTS: int = 500
     DEFAULT_ZOOM_FACTOR: float = 1.0
     DEFAULT_FOLLOW_RADIUS: float = 0.5
