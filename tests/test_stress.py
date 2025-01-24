@@ -16,7 +16,6 @@ from unittest.mock import patch
 
 @pytest.fixture
 def core():
-    # Подготавливаем аргументы по умолчанию
     default_args = [
         "--radius",
         "5.0",
@@ -34,7 +33,6 @@ def core():
         "--no-debug",
     ]
 
-    # Патчим sys.argv для Core
     with patch.object(sys, "argv", [""] + default_args):
         core = Core()
         return core
@@ -66,7 +64,6 @@ def main_window(app, core):
     return window
 
 
-@no_type_check
 class TestMovingPointsStress:
     @no_type_check
     @pytest.mark.stress
