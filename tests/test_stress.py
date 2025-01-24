@@ -106,6 +106,7 @@ class TestMovingPointsStress:
         for _ in range(1000):
             canvas.update_states()
             QTest.qWait(1)
+        QTest.qWait(1000)
             
         assert not canvas.is_updating_states  # Ensure no deadlocks
 
