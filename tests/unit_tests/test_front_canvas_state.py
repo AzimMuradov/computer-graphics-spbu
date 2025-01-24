@@ -31,6 +31,6 @@ def test_reset():
     assert state.zoom_factor == 1.0
     assert np.array_equal(state.pan_offset, np.array([0.0, 0.0], dtype=np.float64))
     assert state.followed_cat_id is None
-    
+
     assert state.speed_factor == 2.5
     assert state.follow_radius == 1.0

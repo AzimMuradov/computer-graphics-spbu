@@ -2,6 +2,8 @@ import pytest
 import numpy as np
 from unittest.mock import MagicMock, patch
 from frontend.core.core import Core
+from typing import no_type_check
+
 
 def test_generate_points():
     # Arrange
@@ -17,6 +19,7 @@ def test_generate_points():
     assert np.all(points <= 1 / zoom_factor)
 
 
+@no_type_check
 def test_generate_deltas():
     # Arrange
     count = 5
@@ -53,7 +56,9 @@ def test_update_states(mock_load_backend_library, mock_initialize_ffi):
 
     mock_ffi.sizeof.return_value = 4
 
-    mock_buffer_data = b"\x00\x00\x00\x00" + b"\x01\x00\x00\x00" + b"\x02\x00\x00\x00"  # 3 int (0, 1, 2)
+    mock_buffer_data = (
+        b"\x00\x00\x00\x00" + b"\x01\x00\x00\x00" + b"\x02\x00\x00\x00"
+    )  # 3 int (0, 1, 2)
     mock_ffi.buffer.return_value = mock_buffer_data
 
     # Act

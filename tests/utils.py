@@ -1,6 +1,7 @@
 from pathlib import Path
 from cffi import FFI
 
+
 def get_backend(ffi: FFI):
     backend_dir = Path(__file__).parent.parent / "backend"
 
