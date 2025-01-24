@@ -134,7 +134,7 @@ class Core:
         return MainWindow(
             point_radius=self.args.radius,
             num_points=self.args.num_points,
-            use_texture=self.args.use_texture,
+            use_texture=self.args.use_texture is not None,
             width=self.args.window_width,
             height=self.args.window_height,
             core=self,
