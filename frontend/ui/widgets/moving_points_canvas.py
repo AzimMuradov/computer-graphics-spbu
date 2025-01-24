@@ -49,14 +49,14 @@ class MovingPointsCanvas(QOpenGLWidget):
         core: Core,
         point_radius: float = RenderingConstants.DEFAULT_POINT_RADIUS,
         num_points: int = RenderingConstants.DEFAULT_NUM_POINTS,
-        image_path: Optional[str] = None,
+        use_texture: bool = False,
         r1: float = RenderingConstants.DEFAULT_R1,
         r2: float = RenderingConstants.DEFAULT_R2,
     ):
         super().__init__()
         self.setFormat(create_surface_format())
 
-        self._init_core_components(core, point_radius, num_points, image_path, r1, r2)
+        self._init_core_components(core, point_radius, num_points, use_texture, r1, r2)
         self._setup_timers()
         self._init_state()
 
@@ -65,7 +65,7 @@ class MovingPointsCanvas(QOpenGLWidget):
         core: Core,
         point_radius: float,
         num_points: int,
-        image_path: Optional[str],
+        use_texture: bool,
         r1: float,
         r2: float,
     ):
@@ -75,8 +75,7 @@ class MovingPointsCanvas(QOpenGLWidget):
         self.input_handler = InputHandler()
         self.point_radius = point_radius
         self.num_points = num_points
-        self.image_path = image_path
-        self.use_texture = True
+        self.use_texture = use_texture
         self.r1 = r1
         self.r2 = r2
 
@@ -135,27 +134,13 @@ class MovingPointsCanvas(QOpenGLWidget):
             fragment_shader=FRAGMENT_SHADER,
         )
 
-        # Load texture if an image path is provided
-        if self.use_texture:
-            self.textures = self.load_textures()
+        # Load texture an image path is provided
+        self.textures = self.load_textures()
 
         self.renderer = PointRenderer(self.ctx, self.shader_program, self.textures)
 
         # Initialize buffers
         self.init_buffers()
-
-    def load_texture(self, file_path):
-        """Load texture from file"""
-        image = QMovie(file_path).convertToFormat(QImage.Format_RGBA8888)
-        width, height = image.width(), image.height()
-
-        bits = image.bits()
-        if bits is None:
-            raise Exception("Failed to load texture")
-        data = bits.asstring(width * height * 4)
-        texture = self.ctx.texture((width, height), 4, data)
-        texture.use()
-        return texture
 
     def load_textures(self) -> Dict[int, moderngl.Texture]:
         texture_paths = self._get_texture_pathes()

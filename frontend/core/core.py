@@ -50,10 +50,10 @@ class ArgumentParser:
             help="Radius of the points",
         )
         parser.add_argument(
-            "--image-path",
-            type=str,
-            default=None,
-            help="Path to the image file for point texture",
+            "--use-texture",
+            type=bool,
+            default=False,
+            help="Enable cat texture for points",
         )
         parser.add_argument(
             "--num-points",
@@ -135,7 +135,7 @@ class Core:
         return MainWindow(
             point_radius=self.args.radius,
             num_points=self.args.num_points,
-            image_path=self.args.image_path,
+            use_texture=self.args.use_texture,
             width=self.args.window_width,
             height=self.args.window_height,
             core=self,
