@@ -51,9 +51,8 @@ class ArgumentParser:
         )
         parser.add_argument(
             "--use-texture",
-            type=bool,
-            default=False,
-            help="Enable cat texture for points",
+            action=argparse.BooleanOptionalAction,
+            help="enable cat texture for points",
         )
         parser.add_argument(
             "--num-points",

@@ -38,7 +38,7 @@ class PointRenderer:
         )
         if state.use_texture:
             self.shader_program["pointRadius"].value = state.point_radius * 4
-            self.textures[0].use(location=0)  # Привязка текстуры для state = 0
+            self.textures[0].use(location=0)
             self.shader_program["stateTexture0"] = 0
             self.textures[1].use(location=1)
             self.shader_program["stateTexture1"] = 1

@@ -139,7 +139,7 @@ class MovingPointsCanvas(QOpenGLWidget):
             fragment_shader=FRAGMENT_SHADER,
         )
 
-        # Load texture an image path is provided
+        # Load textures
         self.textures = self.load_textures()
 
         self.renderer = PointRenderer(self.ctx, self.shader_program, self.textures)
@@ -157,7 +157,7 @@ class MovingPointsCanvas(QOpenGLWidget):
             width, height = image.width(), image.height()
             bits = image.bits()
             if bits is None:
-                raise Exception()
+                raise Exception("Failed to load texture")
             data = bits.asstring(width * height * 4)
             texture = self.ctx.texture((width, height), 4, data)
             texture.build_mipmaps()
