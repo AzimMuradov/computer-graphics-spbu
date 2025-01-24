@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import (
     QSlider,
     QSizePolicy,
     QCheckBox,
-    QHBoxLayout
+    QHBoxLayout,
 )
 from PyQt6.QtCore import Qt
 from frontend.ui.widgets.moving_points_canvas import MovingPointsCanvas
@@ -43,7 +43,7 @@ class MainWindow(QMainWindow):
     def _init_controls(self, num_points: int):
         """Initialize control elements of the GUI"""
         self.controls_widget = QWidget()
-        
+
         self.num_points_label = QLabel("Number of Points:")
         self.num_points_input = QSpinBox()
         self.num_points_input.setRange(1, 1000000)
@@ -73,30 +73,33 @@ class MainWindow(QMainWindow):
     def _setup_layout(self):
         """Set up the layout of all GUI elements"""
         top_layout = QHBoxLayout()
-        
+
         left_controls = QVBoxLayout()
-        
+
         points_layout = QHBoxLayout()
         points_layout.addWidget(self.num_points_label)
         points_layout.addWidget(self.num_points_input)
-        
+
         speed_layout = QHBoxLayout()
         speed_layout.addWidget(self.speed_label)
         speed_layout.addWidget(self.speed_slider)
-        
+
         left_controls.addLayout(points_layout)
         left_controls.addLayout(speed_layout)
-        
+
         top_layout.addLayout(left_controls)
-        top_layout.addWidget(self.texture_checkbox, alignment=Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop)
-        
+        top_layout.addWidget(
+            self.texture_checkbox,
+            alignment=Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop,
+        )
+
         main_layout = QVBoxLayout()
         main_layout.addLayout(top_layout)
         main_layout.addWidget(self.canvas)
-        
+
         self.main_widget.setLayout(main_layout)
         self.setCentralWidget(self.main_widget)
-        
+
         self.canvas.setFocus()
 
     def _connect_signals(self):
@@ -118,5 +121,5 @@ class MainWindow(QMainWindow):
 
     def toggle_use_texture(self, state: int):
         """Updating the value of the use_texture flag"""
-        self.canvas.use_texture = bool(state)  # Обновляем флаг
+        self.canvas.use_texture = bool(state)
         self.update_num_points(self.canvas.num_points)

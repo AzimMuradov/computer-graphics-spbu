@@ -15,8 +15,7 @@ from frontend.ui.renderer import RenderState, PointRenderer
 from frontend.ui.canvas_state import CanvasState
 from frontend.ui.input_handler import InputHandler
 
-from PyQt6.QtGui import QMovie, QSurfaceFormat, QWheelEvent, QMouseEvent
-from PyQt6.QtWidgets import QCheckBox, QVBoxLayout, QWidget
+from PyQt6.QtGui import QSurfaceFormat, QWheelEvent, QMouseEvent
 import moderngl
 import numpy as np
 from OpenGL.GL import GL_POINT_SPRITE, GL_MULTISAMPLE
@@ -142,11 +141,13 @@ class MovingPointsCanvas(QOpenGLWidget):
         # Initialize buffers
         self.init_buffers()
 
-    def load_textures(self) -> Dict[int, moderngl.Texture]:
+    def load_textures(self) -> list[moderngl.Texture]:
         texture_paths = self._get_texture_pathes()
-        textures = {}
+        textures = []
         for state, path in texture_paths.items():
-            image = QImage(path.as_posix()).convertToFormat(QImage.Format.Format_RGBA8888)
+            image = QImage(path.as_posix()).convertToFormat(
+                QImage.Format.Format_RGBA8888
+            )
             width, height = image.width(), image.height()
             bits = image.bits()
             if bits is None:
@@ -154,7 +155,7 @@ class MovingPointsCanvas(QOpenGLWidget):
             data = bits.asstring(width * height * 4)
             texture = self.ctx.texture((width, height), 4, data)
             texture.build_mipmaps()
-            textures[state] = texture
+            textures.append(texture)
         return textures
 
     def _get_texture_pathes(self) -> dict[int, Path]:
@@ -163,7 +164,7 @@ class MovingPointsCanvas(QOpenGLWidget):
         return {
             0: base_dir / "calm_cat.png",
             1: base_dir / "angry_cat.png",
-            2: base_dir / "fight_cat.png"
+            2: base_dir / "fight_cat.png",
         }
 
     @no_type_check
