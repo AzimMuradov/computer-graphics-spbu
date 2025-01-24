@@ -24,7 +24,9 @@ FRAGMENT_SHADER = """
 
 flat in int fragIndex;
 flat in int fragState; // State passed from vertex shader
-uniform sampler2D pointTexture;
+uniform sampler2D stateTexture0;
+uniform sampler2D stateTexture1;
+uniform sampler2D stateTexture2;
 uniform bool useTexture;
 uniform int highlightedIndex;  // Index of follo
 out vec4 fragColor;
@@ -42,11 +44,23 @@ float star(vec2 p, float r, int n, float m) {
 }
 
 void main() {
+    vec2 coord;
+    vec2 starCoord;
+
     if (useTexture) {
-        vec2 coord = gl_PointCoord;
-        fragColor = texture(pointTexture, coord);
+        coord = gl_PointCoord;
+        starCoord = 2.0 * gl_PointCoord - 1.0;
+
+         if (fragState == 0) {
+            fragColor = texture(stateTexture0, coord);
+        } else if (fragState == 1) {
+            fragColor = texture(stateTexture1, coord);
+        } else if (fragState == 2) {
+            fragColor = texture(stateTexture2, coord);
+        }
     } else {
-        vec2 coord = 2.0 * gl_PointCoord - 1.0;
+        coord = 2.0 * gl_PointCoord - 1.0;
+        starCoord = coord;
 
         if (dot(coord, coord) > 1.0) {
                 discard;
@@ -60,12 +74,12 @@ void main() {
         } else if (fragState == 2) {
             fragColor = vec4(1.0, 0.0, 0.0, 1.0); // Red
         }
+    }
 
-        if (fragIndex == highlightedIndex) {
-            float s = star(coord * 1.5, 0.3, 5, 3.0);
-            if (s < 0.0) {
-                fragColor = vec4(1.0, 1.0, 1.0, 1.0); // White star
-            }
+    if (fragIndex == highlightedIndex) {
+        float s = star(starCoord * 1.5, 0.3, 5, 3.0);
+        if (s < 0.0) {
+            fragColor = vec4(1.0, 1.0, 1.0, 1.0); // White star
         }
     }
 }

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import *
 
 from frontend.constants import (
@@ -14,7 +15,7 @@ from frontend.ui.renderer import RenderState, PointRenderer
 from frontend.ui.canvas_state import CanvasState
 from frontend.ui.input_handler import InputHandler
 
-from PyQt6.QtGui import QMovie, QSurfaceFormat, QWheelEvent, QMouseEvent
+from PyQt6.QtGui import QSurfaceFormat, QWheelEvent, QMouseEvent
 import moderngl
 import numpy as np
 from OpenGL.GL import GL_POINT_SPRITE, GL_MULTISAMPLE
@@ -47,14 +48,18 @@ class MovingPointsCanvas(QOpenGLWidget):
         core: Core,
         point_radius: float = RenderingConstants.DEFAULT_POINT_RADIUS,
         num_points: int = RenderingConstants.DEFAULT_NUM_POINTS,
-        image_path: Optional[str] = None,
+        use_texture: bool = False,
+        cursor_push: bool = False,
         r1: float = RenderingConstants.DEFAULT_R1,
         r2: float = RenderingConstants.DEFAULT_R2,
     ):
         super().__init__()
         self.setFormat(create_surface_format())
+        self.setMouseTracking(True)
 
-        self._init_core_components(core, point_radius, num_points, image_path, r1, r2)
+        self._init_core_components(
+            core, point_radius, num_points, use_texture, cursor_push, r1, r2
+        )
         self._setup_timers()
         self._init_state()
 
@@ -63,26 +68,27 @@ class MovingPointsCanvas(QOpenGLWidget):
         core: Core,
         point_radius: float,
         num_points: int,
-        image_path: Optional[str],
+        use_texture: bool,
+        cursor_push: bool,
         r1: float,
         r2: float,
-    ) -> None:
+    ):
         """Initialize core components and parameters"""
         self.core = core
         self.state = CanvasState()
         self.input_handler = InputHandler()
         self.point_radius = point_radius
         self.num_points = num_points
-        self.image_path = image_path
-        self.use_texture = image_path is not None
+        self.use_texture = use_texture
+        self.cursor_push = cursor_push
         self.r1 = r1
         self.r2 = r2
 
-    def _init_state(self) -> None:
+    def _init_state(self):
         """Initialize state variables"""
         self.show_cursor_coords = False
         self.is_updating_states = False
-        self.cursor_coords = np.zeros(2, dtype=np.float64)
+        self.cursor_coords: np.ndarray | None = None
         self.follow_radius = RenderingConstants.DEFAULT_FOLLOW_RADIUS
 
         # Generate initial points and states
@@ -92,7 +98,7 @@ class MovingPointsCanvas(QOpenGLWidget):
 
         self.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
 
-    def _setup_timers(self) -> None:
+    def _setup_timers(self):
         """Setup and start update timers"""
         # Position update timer
         self.timer = QTimer()
@@ -133,27 +139,39 @@ class MovingPointsCanvas(QOpenGLWidget):
             fragment_shader=FRAGMENT_SHADER,
         )
 
-        # Load texture if an image path is provided
-        if self.use_texture:
-            self.texture = self.load_texture(self.image_path)
+        # Load textures
+        self.textures = self.load_textures()
 
-        self.renderer = PointRenderer(self.ctx, self.shader_program)
+        self.renderer = PointRenderer(self.ctx, self.shader_program, self.textures)
 
         # Initialize buffers
         self.init_buffers()
 
-    def load_texture(self, file_path):
-        """Load texture from file"""
-        image = QMovie(file_path).convertToFormat(QImage.Format_RGBA8888)
-        width, height = image.width(), image.height()
+    def load_textures(self) -> list[moderngl.Texture]:
+        texture_paths = self._get_texture_pathes()
+        textures = []
+        for state, path in texture_paths.items():
+            image = QImage(path.as_posix()).convertToFormat(
+                QImage.Format.Format_RGBA8888
+            )
+            width, height = image.width(), image.height()
+            bits = image.bits()
+            if bits is None:
+                raise Exception("Failed to load texture")
+            data = bits.asstring(width * height * 4)
+            texture = self.ctx.texture((width, height), 4, data)
+            texture.build_mipmaps()
+            textures.append(texture)
+        return textures
 
-        bits = image.bits()
-        if bits is None:
-            raise Exception("Failed to load texture")
-        data = bits.asstring(width * height * 4)
-        texture = self.ctx.texture((width, height), 4, data)
-        texture.use()
-        return texture
+    def _get_texture_pathes(self) -> dict[int, Path]:
+        base_dir = Path(__file__).parent.parent.parent.parent / "data"
+
+        return {
+            0: base_dir / "calm_cat.png",
+            1: base_dir / "angry_cat.png",
+            2: base_dir / "fight_cat.png",
+        }
 
     @no_type_check
     def paintGL(self):
@@ -187,7 +205,7 @@ class MovingPointsCanvas(QOpenGLWidget):
     def resizeGL(self, w: int, h: int):
         self.ctx.viewport = (0, 0, w, h)
 
-    # Buffer Managment
+    # Buffer Management
 
     def init_buffers(self):
         # Create Vertex Buffer Object (VBO) for positions
@@ -234,12 +252,38 @@ class MovingPointsCanvas(QOpenGLWidget):
         self._update_camera_if_following()
         self._update_render_buffers()
 
-    def _update_point_positions(self) -> None:
+    def _update_point_positions(self):
         """Update positions based on current deltas"""
         interpolation_speed = 1.0 / RenderingConstants.FPS
-        self.points += self.deltas * interpolation_speed
+        movement = self.deltas * interpolation_speed
 
-    def _update_camera_if_following(self) -> None:
+        if self.cursor_push:
+            for i in range(len(self.points)):
+                push_vector = self._calculate_push_vector(self.points[i])
+                movement[i] += push_vector
+
+        self.points += movement
+
+    def _calculate_push_vector(self, point_pos: np.ndarray) -> np.ndarray:
+        if self.cursor_coords is None:
+            return np.zeros(2)
+
+        cursor_pos = np.array([self.cursor_coords[0], self.cursor_coords[1]])
+
+        direction = point_pos - cursor_pos
+        distance = np.linalg.norm(direction)
+
+        push_radius = 0.08
+        push_strength_ratio = 0.8
+
+        if distance < push_radius:
+            normalized_direction = direction / (distance + 1e-6)
+            push_strength = (1 - distance / push_radius) * push_strength_ratio
+            return normalized_direction * push_strength
+
+        return np.zeros(2)
+
+    def _update_camera_if_following(self):
         """Update camera position when following a point"""
         if self.state.followed_cat_id is None:
             return
@@ -261,7 +305,7 @@ class MovingPointsCanvas(QOpenGLWidget):
             + target_pos * CameraSettings.SMOOTHNESS
         )
 
-    def _update_render_buffers(self) -> None:
+    def _update_render_buffers(self):
         """Update render buffers if states match points"""
         if len(self.points) == len(self.states):
             self.vbo.write(self.points.astype("f4").tobytes())
@@ -283,7 +327,7 @@ class MovingPointsCanvas(QOpenGLWidget):
         self.is_updating_states = True  # Mark as running
         self._start_state_update_worker()
 
-    def _start_state_update_worker(self) -> None:
+    def _start_state_update_worker(self):
         """Initialize and start state update worker thread"""
         self.core_thread = QThread(parent=self)
         self.worker = UpdateStatesWorker(
@@ -293,7 +337,7 @@ class MovingPointsCanvas(QOpenGLWidget):
         self._setup_worker_connections()
         self.core_thread.start()
 
-    def _setup_worker_connections(self) -> None:
+    def _setup_worker_connections(self):
         """Setup signal connections for worker thread"""
         self.worker.moveToThread(self.core_thread)
 
@@ -349,6 +393,15 @@ class MovingPointsCanvas(QOpenGLWidget):
 
         if new_pan_offset is not None:
             self.state.pan_offset = new_pan_offset
+
+        self.cursor_coords = np.array(
+            [
+                (event.position().x() / self.width() * 2 - 1) / self.state.zoom_factor
+                - self.state.pan_offset[0],
+                -(event.position().y() / self.height() * 2 - 1) / self.state.zoom_factor
+                - self.state.pan_offset[1],
+            ]
+        )
 
     def mouseReleaseEvent(self, event):
         """Handle mouse release events"""
