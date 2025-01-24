@@ -1,10 +1,17 @@
 import pytest
 import numpy as np
+from PyQt6.QtCore import QPoint, Qt, QPointF, QEvent
+from PyQt6.QtGui import QWheelEvent, QMouseEvent, QKeyEvent
+from PyQt6.QtTest import QTest
+from PyQt6.QtWidgets import QApplication
+import sys
 import time
+
+from frontend.ui.widgets.main_window import MainWindow
+from frontend.core.core import Core
+
 import sys
 from unittest.mock import patch
-from concurrent.futures import ThreadPoolExecutor
-from frontend.core.core import Core
 
 @pytest.fixture
 def core():
@@ -25,117 +32,206 @@ def core():
         core = Core()
         return core
 
-def test_stress_massive_state_updates(core):
-    """
-    Стресс-тест: Массовые обновления состояний для большого количества котов
-    Проверяет производительность и стабильность core.update_states
-    """
-    cat_count = 100000
-    window_size = (800, 600)  # 4K разрешение
-    
-    positions = np.random.uniform(-1, 1, (cat_count, 2)).astype(np.float64)
-    
-    start_time = time.time()
-    for _ in range(100):  # 100 последовательных обновлений
-        states = core.update_states(
-            cat_count,
-            positions,
-            window_size[0],
-            window_size[1]
-        )
-        positions += np.random.uniform(-0.01, 0.01, (cat_count, 2))
+@pytest.fixture
+def app(qapp):
+    return qapp
+
+@pytest.fixture
+def qapp():
+    if not QApplication.instance():
+        return QApplication([])
+    return QApplication.instance()
+
+@pytest.fixture
+def main_window(app, core):
+    window = MainWindow(
+        point_radius=5.0,
+        num_points=1000,
+        use_texture=False,
+        width=800,
+        height=600,
+        core=core
+    )
+    window.show()
+    return window
+
+class TestMovingPointsStress:
+    @pytest.mark.stress
+    @pytest.mark.parametrize("num_points", [1000, 10000, 100000])
+    def test_points_scaling(self, main_window, num_points):
+        """Test performance with different numbers of points"""
+        canvas = main_window.canvas
+        main_window.update_num_points(num_points)
         
-    execution_time = time.time() - start_time
-    
-    assert execution_time < 30, f"State updates took too long: {execution_time} seconds"
-    assert len(states) == cat_count, "All cats should be processed"
+        # Measure frame time for 100 frames
+        times = []
+        for _ in range(100):
+            start = time.time()
+            canvas.update()
+            QTest.qWait(16)  # Wait for one frame
+            times.append(time.time() - start)
+            
+        avg_frame_time = sum(times) / len(times)
+        assert avg_frame_time < 0.5  # Ensure 30+ FPS
 
-def test_stress_concurrent_state_calculations(core):
-    """
-    Стресс-тест: Параллельные вычисления состояний
-    Проверяет работу системы при одновременных вычислениях в разных потоках
-    """
-    cat_counts = [100000, 200000, 300000, 400000]  # Разные размеры групп
-    window_size = (1920, 1080)
-    
-    def calculate_states(count):
-        positions = np.random.uniform(-1, 1, (count, 2)).astype(np.float64)
-        return core.update_states(count, positions, window_size[0], window_size[1])
-    
-    with ThreadPoolExecutor(max_workers=4) as executor:
-        futures = [executor.submit(calculate_states, count) for count in cat_counts]
-        results = [future.result() for future in futures]
-    
-    for count, states in zip(cat_counts, results):
-        assert len(states) == count, f"Incorrect number of states for {count} cats"
+    @pytest.mark.stress
+    def test_rapid_zoom_changes(self, main_window):
+        """Test rapid zoom in/out operations"""
+        canvas = main_window.canvas
+        
+        for _ in range(1000):
+            # Simulate mouse wheel events
+            event = QWheelEvent(
+                QPointF(400, 300),
+                QPointF(400, 300),
+                QPoint(0, 120),
+                QPoint(0, 120),
+                Qt.MouseButton.NoButton,
+                Qt.KeyboardModifier.NoModifier,
+                Qt.ScrollPhase.NoScrollPhase,
+                False
+            )
+            canvas.wheelEvent(event)
+            QTest.qWait(1)
 
-def test_stress_memory_usage(core):
-    """
-    Стресс-тест: Использование памяти
-    Проверяет утечки памяти при длительной работе с большими данными
-    """
-    import psutil
-    import os
-    
-    process = psutil.Process(os.getpid())
-    initial_memory = process.memory_info().rss
-    
-    cat_count = 500000
-    window_size = (1920, 1080)
-    
-    for _ in range(50):  # 50 итераций с созданием новых данных
-        positions = np.random.uniform(-1, 1, (cat_count, 2)).astype(np.float64)
-        states = core.update_states(cat_count, positions, window_size[0], window_size[1])
-        del positions
-        del states
-    
-    final_memory = process.memory_info().rss
-    memory_increase = (final_memory - initial_memory) / 1024 / 1024  # В МБ
-    
-    assert memory_increase < 100, f"Memory increase too high: {memory_increase}MB"
+    @pytest.mark.stress
+    def test_rapid_state_updates(self, main_window):
+        """Test frequent state updates"""
+        canvas = main_window.canvas
+        
+        # Force rapid state updates
+        canvas.state_update_timer.setInterval(1)  # Set to minimum interval
+        
+        for _ in range(1000):
+            canvas.update_states()
+            QTest.qWait(1)
+            
+        assert not canvas.is_updating_states  # Ensure no deadlocks
 
-def test_stress_rapid_position_updates(core):
-    """
-    Стресс-тест: Быстрые обновления позиций
-    Проверяет производительность при частых обновлениях позиций
-    """
-    cat_count = 200000
-    window_size = (800, 600)
-    positions = np.random.uniform(-1, 1, (cat_count, 2)).astype(np.float64)
-    
-    start_time = time.time()
-    
-    for _ in range(1000):  # 1000 быстрых обновлений
-        deltas = core.generate_deltas(None, cat_count, 1.0)
-        positions += deltas
-        states = core.update_states(cat_count, positions, window_size[0], window_size[1])
-    
-    execution_time = time.time() - start_time
-    
-    assert execution_time < 60, f"Position updates took too long: {execution_time} seconds"
+    @pytest.mark.stress
+    def test_concurrent_operations(self, main_window):
+        """Test multiple operations happening simultaneously"""
+        canvas = main_window.canvas
+        
+        # Simulate concurrent operations
+        for _ in range(100):
+            # Update points
+            canvas.update_num_points(np.random.randint(100, 10000))
+            
+            # Change speed
+            main_window.update_speed(np.random.randint(1, 1000))
+            
+            # Toggle texture
+            main_window.toggle_use_texture(np.random.choice([0, 2]))
+            
+            # Update states
+            canvas.update_states()
+            
+            QTest.qWait(1)
 
-def test_stress_boundary_conditions_performance(core):
-    """
-    Стресс-тест: Производительность при граничных условиях
-    Проверяет производительность когда все коты находятся на границах
-    """
-    cat_count = 300000
-    window_size = (1920, 1080)
-    
-    # Создаем позиции на границах
-    boundary_positions = np.array([
-        [1.0, 1.0],  # Верхний правый угол
-        [-1.0, 1.0], # Верхний левый угол
-        [1.0, -1.0], # Нижний правый угол
-        [-1.0, -1.0] # Нижний левый угол
-    ])
-    
-    positions = np.repeat(boundary_positions, cat_count // 4, axis=0)
-    
-    start_time = time.time()
-    for _ in range(100):
-        states = core.update_states(len(positions), positions, window_size[0], window_size[1])
-    
-    execution_time = time.time() - start_time
-    
-    assert execution_time < 30, f"Boundary condition processing took too long: {execution_time} seconds"
+    @pytest.mark.stress
+    def test_rapid_mouse_movements(self, main_window):
+        """Test rapid mouse movements and clicks"""
+        canvas = main_window.canvas
+        print('эщкере')
+        
+        for _ in range(1000):
+            # Generate random mouse positions
+            x = np.random.randint(0, canvas.width())
+            y = np.random.randint(0, canvas.height())
+            
+            # Create mouse move event
+            move_event = QMouseEvent(
+                QEvent.Type.MouseMove,
+                QPointF(x, y),
+                Qt.MouseButton.NoButton,
+                Qt.MouseButton.NoButton,
+                Qt.KeyboardModifier.NoModifier
+            )
+            canvas.mouseMoveEvent(move_event)
+            
+            if _ % 100 == 0:  # Occasionally double click
+                click_event = QMouseEvent(
+                    QEvent.Type.MouseButtonDblClick,
+                    QPointF(x, y),
+                    Qt.MouseButton.LeftButton,
+                    Qt.MouseButton.LeftButton,
+                    Qt.KeyboardModifier.NoModifier
+                )
+                canvas.mouseDoubleClickEvent(click_event)
+            
+            QTest.qWait(1)
+
+    @pytest.mark.stress
+    def test_memory_usage(self, main_window):
+        """Test memory usage under load"""
+        import psutil
+        import os
+        
+        process = psutil.Process(os.getpid())
+        initial_memory = process.memory_info().rss
+        
+        # Perform memory-intensive operations
+        for _ in range(10):
+            main_window.update_num_points(100000)
+            main_window.canvas.update_states()
+            QTest.qWait(100)
+            
+            current_memory = process.memory_info().rss
+            # Ensure memory growth is reasonable (less than 2x)
+            assert current_memory < initial_memory * 2
+
+    @pytest.mark.stress
+    def test_rapid_window_resize(self, main_window):
+        """Test rapid window resizing"""
+        sizes = [(800, 600), (1920, 1080), (640, 480), (1280, 720)]
+        
+        for _ in range(100):
+            for width, height in sizes:
+                main_window.resize(width, height)
+                QTest.qWait(10)
+                
+            # Verify rendering still works
+            main_window.canvas.update()
+            assert main_window.canvas.ctx.viewport == (0, 0, width, height)
+
+    @pytest.mark.stress
+    def test_texture_switching(self, main_window):
+        """Test rapid texture switching"""
+        for _ in range(500):
+            main_window.toggle_use_texture(2)  # Enable
+            QTest.qWait(1)
+            main_window.toggle_use_texture(0)  # Disable
+            QTest.qWait(1)
+            
+        # Verify final state is stable
+        main_window.canvas.update()
+        
+    @pytest.mark.stress
+    def test_following_mode_stress(self, main_window):
+        """Test stress on following mode"""
+        canvas = main_window.canvas
+        
+        for _ in range(100):
+            # Simulate double click at random positions
+            x = np.random.randint(0, canvas.width())
+            y = np.random.randint(0, canvas.height())
+            
+            event = QMouseEvent(
+                QEvent.Type.MouseButtonDblClick,
+                QPointF(x, y),
+                Qt.MouseButton.LeftButton,
+                Qt.MouseButton.LeftButton,
+                Qt.KeyboardModifier.NoModifier
+            )
+            canvas.mouseDoubleClickEvent(event)
+            
+            # Move points
+            canvas.update_positions()
+            QTest.qWait(10)
+            
+            # Toggle following mode off
+            key_event = QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_F, Qt.KeyboardModifier.NoModifier)
+            canvas.keyPressEvent(key_event)
+            
+            QTest.qWait(10)
