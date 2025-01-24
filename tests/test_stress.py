@@ -39,19 +39,7 @@ def core():
 
 
 @pytest.fixture
-def app(qapp):
-    return qapp
-
-
-@pytest.fixture
-def qapp():
-    if not QApplication.instance():
-        return QApplication([])
-    return QApplication.instance()
-
-
-@pytest.fixture
-def main_window(app, core):
+def main_window(core):
     window = MainWindow(
         point_radius=5.0,
         num_points=1000,
