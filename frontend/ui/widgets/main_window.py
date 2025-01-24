@@ -58,6 +58,10 @@ class MainWindow(QMainWindow):
         self.texture_checkbox.setChecked(self.use_texture)
         self.texture_checkbox.stateChanged.connect(self.toggle_use_texture)
 
+        self.cursor_push_checkbox = QCheckBox("Enable Cursor Push")
+        self.cursor_push_checkbox.setChecked(False)
+        self.cursor_push_checkbox.stateChanged.connect(self.toggle_cursor_push)
+
     def _init_canvas(self, point_radius: float, num_points: int, use_texture: bool):
         """Initialize the OpenGL canvas for rendering moving points"""
         self.canvas = MovingPointsCanvas(
@@ -87,11 +91,10 @@ class MainWindow(QMainWindow):
         left_controls.addLayout(points_layout)
         left_controls.addLayout(speed_layout)
 
+        left_controls.addWidget(self.texture_checkbox)
+        left_controls.addWidget(self.cursor_push_checkbox)
+
         top_layout.addLayout(left_controls)
-        top_layout.addWidget(
-            self.texture_checkbox,
-            alignment=Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop,
-        )
 
         main_layout = QVBoxLayout()
         main_layout.addLayout(top_layout)
@@ -123,3 +126,8 @@ class MainWindow(QMainWindow):
         """Updating the value of the use_texture flag"""
         self.canvas.use_texture = bool(state)
         self.update_num_points(self.canvas.num_points)
+    
+    def toggle_cursor_push(self, state: int):
+        """Updating the value of the cursor_push flag"""
+        self.canvas.cursor_push = bool(state)
+        #self.update_num_points(self.canvas.num_points)

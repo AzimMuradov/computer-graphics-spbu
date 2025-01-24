@@ -49,13 +49,15 @@ class MovingPointsCanvas(QOpenGLWidget):
         point_radius: float = RenderingConstants.DEFAULT_POINT_RADIUS,
         num_points: int = RenderingConstants.DEFAULT_NUM_POINTS,
         use_texture: bool = False,
+        cursor_push: bool = False,
         r1: float = RenderingConstants.DEFAULT_R1,
         r2: float = RenderingConstants.DEFAULT_R2,
     ):
         super().__init__()
         self.setFormat(create_surface_format())
+        self.setMouseTracking(True)
 
-        self._init_core_components(core, point_radius, num_points, use_texture, r1, r2)
+        self._init_core_components(core, point_radius, num_points, use_texture, cursor_push, r1, r2)
         self._setup_timers()
         self._init_state()
 
@@ -65,6 +67,7 @@ class MovingPointsCanvas(QOpenGLWidget):
         point_radius: float,
         num_points: int,
         use_texture: bool,
+        cursor_push: bool,
         r1: float,
         r2: float,
     ):
@@ -75,6 +78,7 @@ class MovingPointsCanvas(QOpenGLWidget):
         self.point_radius = point_radius
         self.num_points = num_points
         self.use_texture = use_texture
+        self.cursor_push = cursor_push
         self.r1 = r1
         self.r2 = r2
 
@@ -249,7 +253,29 @@ class MovingPointsCanvas(QOpenGLWidget):
     def _update_point_positions(self):
         """Update positions based on current deltas"""
         interpolation_speed = 1.0 / RenderingConstants.FPS
-        self.points += self.deltas * interpolation_speed
+        movement = self.deltas * interpolation_speed
+
+        if self.cursor_push:
+            for i in range(len(self.points)):
+                push_vector = self._calculate_push_vector(self.points[i])
+                movement[i] += push_vector
+        
+        self.points += movement
+
+    def _calculate_push_vector(self, point_pos: np.ndarray) -> np.ndarray:
+        cursor_pos = np.array([self.cursor_coords[0], self.cursor_coords[1]])
+
+        direction = point_pos - cursor_pos
+        distance = np.linalg.norm(direction)
+
+        push_radius = 0.08
+
+        if distance < push_radius:
+            normalized_direction = direction / (distance + 1e-6)
+            push_strength = (1- distance/push_radius)
+            return normalized_direction * push_strength
+        
+        return np.zeros(2)
 
     def _update_camera_if_following(self):
         """Update camera position when following a point"""
@@ -348,6 +374,9 @@ class MovingPointsCanvas(QOpenGLWidget):
 
     def mouseMoveEvent(self, event: QMouseEvent | None):
         """Handle mouse movement for panning"""
+        self.cursor_coords[0] = event.position().x() / self.width() * 2 - 1
+        self.cursor_coords[1] = -(event.position().y() / self.height() * 2 - 1)
+
         if event is None or self.input_handler.last_mouse_pos is None:
             return
 
