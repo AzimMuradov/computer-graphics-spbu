@@ -33,7 +33,10 @@ At the same time, cats move within a limited area.
 
 ![zoom_and_drug_demo](https://github.com/user-attachments/assets/4333d5c0-2ce7-4a2a-a249-625ded57682c)
 
-3. Cats can leave and return to the visible portion of the map
+3. You can scare cats so that they run away from the cursor
+
+![cursor push demo](https://github.com/user-attachments/assets/9c9c39b5-10de-4d48-b6bf-40ca74b83472)
+
 
 4. You can set a custom image for the cats or use predefined with Tom
 
