@@ -86,7 +86,7 @@ class MovingPointsCanvas(QOpenGLWidget):
         """Initialize state variables"""
         self.show_cursor_coords = False
         self.is_updating_states = False
-        self.cursor_coords = np.zeros(2, dtype=np.float64)
+        self.cursor_coords: np.ndarray | None = None
         self.follow_radius = RenderingConstants.DEFAULT_FOLLOW_RADIUS
 
         # Generate initial points and states
@@ -263,16 +263,20 @@ class MovingPointsCanvas(QOpenGLWidget):
         self.points += movement
 
     def _calculate_push_vector(self, point_pos: np.ndarray) -> np.ndarray:
+        if self.cursor_coords is None:
+            return np.zeros(2)
+        
         cursor_pos = np.array([self.cursor_coords[0], self.cursor_coords[1]])
 
         direction = point_pos - cursor_pos
         distance = np.linalg.norm(direction)
 
         push_radius = 0.08
+        push_strength_ratio = 0.8
 
         if distance < push_radius:
             normalized_direction = direction / (distance + 1e-6)
-            push_strength = (1- distance/push_radius)
+            push_strength = (1- distance/push_radius) * push_strength_ratio
             return normalized_direction * push_strength
         
         return np.zeros(2)
@@ -374,9 +378,6 @@ class MovingPointsCanvas(QOpenGLWidget):
 
     def mouseMoveEvent(self, event: QMouseEvent | None):
         """Handle mouse movement for panning"""
-        self.cursor_coords[0] = event.position().x() / self.width() * 2 - 1
-        self.cursor_coords[1] = -(event.position().y() / self.height() * 2 - 1)
-
         if event is None or self.input_handler.last_mouse_pos is None:
             return
 
@@ -390,6 +391,11 @@ class MovingPointsCanvas(QOpenGLWidget):
 
         if new_pan_offset is not None:
             self.state.pan_offset = new_pan_offset
+
+        self.cursor_coords = np.array([
+            (event.position().x() / self.width() * 2 - 1) / self.state.zoom_factor - self.state.pan_offset[0],
+            -(event.position().y() / self.height() * 2 - 1) / self.state.zoom_factor - self.state.pan_offset[1]
+        ])
 
     def mouseReleaseEvent(self, event):
         """Handle mouse release events"""

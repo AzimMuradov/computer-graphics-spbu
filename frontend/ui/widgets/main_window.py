@@ -130,4 +130,3 @@ class MainWindow(QMainWindow):
     def toggle_cursor_push(self, state: int):
         """Updating the value of the cursor_push flag"""
         self.canvas.cursor_push = bool(state)
-        #self.update_num_points(self.canvas.num_points)
