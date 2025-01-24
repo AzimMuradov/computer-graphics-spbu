@@ -1,6 +1,7 @@
+from tests.utils import get_backend
 import pytest
-from typing import *
 import numpy as np
+from typing import *
 from cffi import FFI
 
 window_width = 20
@@ -8,19 +9,7 @@ window_height = 20
 scale = 1.0
 
 ffi = FFI()
-
-from pathlib import Path
-
-backend_dir = Path(__file__).parent.parent / "backend"
-
-with open(backend_dir / "library.h", mode="r") as f:
-    dec = ""
-    for line in f:
-        if line.startswith("#"):
-            continue
-        dec += line
-    ffi.cdef(dec)
-lib = ffi.dlopen(str(backend_dir / "libbackend_test.so"))
+lib = get_backend(ffi)
 
 
 @pytest.fixture
