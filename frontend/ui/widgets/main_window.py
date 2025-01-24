@@ -126,7 +126,7 @@ class MainWindow(QMainWindow):
         """Updating the value of the use_texture flag"""
         self.canvas.use_texture = bool(state)
         self.update_num_points(self.canvas.num_points)
-    
+
     def toggle_cursor_push(self, state: int):
         """Updating the value of the cursor_push flag"""
         self.canvas.cursor_push = bool(state)
