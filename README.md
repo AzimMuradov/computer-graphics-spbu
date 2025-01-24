@@ -35,7 +35,10 @@ At the same time, cats move within a limited area.
 
 3. Cats can leave and return to the visible portion of the map
 
-4. You can set a custom image for the cats
+4. You can set a custom image for the cats or use predefined with Tom
+
+![texture feature demo](https://github.com/user-attachments/assets/98ae71fd-b501-4853-a240-45573482dd75)
+
 
 5. You can turn on logs of cat interactions
 
