@@ -37,11 +37,9 @@ At the same time, cats move within a limited area.
 
 ![cursor push demo](https://github.com/user-attachments/assets/9c9c39b5-10de-4d48-b6bf-40ca74b83472)
 
-
 4. You can set a custom image for the cats or use predefined with Tom
 
 ![texture feature demo](https://github.com/user-attachments/assets/98ae71fd-b501-4853-a240-45573482dd75)
-
 
 5. You can turn on logs of cat interactions
 
@@ -88,16 +86,16 @@ The application provides extensive options for configuring the simulation throug
 These settings allow users to easily adapt the simulation to their needs by changing visual parameters, the number of
 cats, and their interaction rules.
 
-| Option              | Description                                                                   |         Default         |
-|---------------------|-------------------------------------------------------------------------------|:-----------------------:|
-| --radius FLOAT      | set the radius of the points (cats)                                           |            5            |
-| --image-path PATH   | set a path to an image that will be used as a texture for points (cats)       | no texture (use colors) |
-| --num-points INT    | set the number of points (cats) in the simulation                             |       500 points        |
-| --fight-radius INT  | set the radius of the fight zone for cats, must be smaller than hiss-radius   |           15            |
-| --hiss-radius INT   | set the radius of the hissing zone for cats, must be larger than fight-radius |           30            |
-| --window-width INT  | set the width of the application window                                       |       1000 pixels       |
-| --window-height INT | set the height of the application window                                      |       800 pixels        |
-| --debug, --no-debug | enable debug messages                                                         |        disabled         |
+| Option                          | Description                                                                   |        Default        |
+|---------------------------------|-------------------------------------------------------------------------------|:---------------------:|
+| --radius FLOAT                  | set the radius of the points (cats)                                           |           5           |
+| --use-texture, --no-use-texture | enable cat texture for points                                                 | disabled (use colors) |
+| --num-points INT                | set the number of points (cats) in the simulation                             |      500 points       |
+| --fight-radius INT              | set the radius of the fight zone for cats, must be smaller than hiss-radius   |          15           |
+| --hiss-radius INT               | set the radius of the hissing zone for cats, must be larger than fight-radius |          30           |
+| --window-width INT              | set the width of the application window                                       |      1000 pixels      |
+| --window-height INT             | set the height of the application window                                      |      800 pixels       |
+| --debug, --no-debug             | enable debug messages                                                         |       disabled        |
 
 ## License
 
