@@ -42,45 +42,55 @@ class Backend(Protocol):
 class ArgumentParser:
     @staticmethod
     def create_parser() -> argparse.ArgumentParser:
-        parser = argparse.ArgumentParser(description="OpenGL Moving Points Application")
+        parser = argparse.ArgumentParser(
+            description="Drunk Cats",
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        )
         parser.add_argument(
             "--radius",
             type=float,
             default=RenderingConstants.DEFAULT_POINT_RADIUS,
-            help="Radius of the points",
+            help="set the radius of the points (cats)",
         )
         parser.add_argument(
-            "--image-path",
-            type=str,
-            default=None,
-            help="Path to the image file for point texture",
+            "--use-texture",
+            action=argparse.BooleanOptionalAction,
+            help="enable cat texture for points",
         )
         parser.add_argument(
             "--num-points",
             type=int,
             default=RenderingConstants.DEFAULT_NUM_POINTS,
-            help="Number of points",
+            help="set the number of points (cats) in the simulation",
         )
         parser.add_argument(
             "--fight-radius",
             type=int,
             default=15,
-            help="Radius of the cat's fight zone, must be smaller than hiss-radius",
+            help="set the radius of the fight zone for cats, must be smaller than hiss-radius",
         )
         parser.add_argument(
             "--hiss-radius",
             type=int,
             default=30,
-            help="Radius of the cat's hiss zone, must be larger than fight-radius",
+            help="set the radius of the hissing zone for cats, must be larger than fight-radius",
         )
         parser.add_argument(
-            "--window-width", type=int, default=1000, help="Width of the window"
+            "--window-width",
+            type=int,
+            default=1000,
+            help="set the width of the application window",
         )
         parser.add_argument(
-            "--window-height", type=int, default=800, help="Height of the window"
+            "--window-height",
+            type=int,
+            default=800,
+            help="set the height of the application window",
         )
         parser.add_argument(
-            "--debug", type=bool, default=False, help="Enable debug messages"
+            "--debug",
+            action=argparse.BooleanOptionalAction,
+            help="enable debug messages",
         )
         return parser
 
@@ -111,14 +121,14 @@ class Core:
         backend_path = Path(__file__).parent.parent.parent / "backend" / "libbackend.so"
         return cast(Backend, self.ffi.dlopen(str(backend_path)))
 
-    def _configure_logging(self) -> None:
+    def _configure_logging(self):
         if self.args.debug:
             logger.setLevel(logging.DEBUG)
 
-    def _configure_backend(self) -> None:
+    def _configure_backend(self):
         self.lib.drunk_cats_configure(self.args.fight_radius, self.args.hiss_radius)
 
-    def main(self) -> None:
+    def main(self):
         self._configure_qt()
         app = QApplication(sys.argv)
         window = self._create_main_window()
@@ -126,7 +136,7 @@ class Core:
         self.start_ui(app, window)
 
     @staticmethod
-    def _configure_qt() -> None:
+    def _configure_qt():
         QSurfaceFormat.setDefaultFormat(create_surface_format())
         QApplication.setAttribute(Qt.ApplicationAttribute.AA_ShareOpenGLContexts, True)
         QApplication.setAttribute(Qt.ApplicationAttribute.AA_UseDesktopOpenGL)
@@ -135,20 +145,20 @@ class Core:
         return MainWindow(
             point_radius=self.args.radius,
             num_points=self.args.num_points,
-            image_path=self.args.image_path,
+            use_texture=self.args.use_texture is not None,
             width=self.args.window_width,
             height=self.args.window_height,
             core=self,
         )
 
-    def start_ui(self, app: QApplication, window: MainWindow) -> None:
+    def start_ui(self, app: QApplication, window: MainWindow):
         window.show()
         sys.exit(app.exec())
 
-    def update_num_points(self, window: MainWindow, num_points: int) -> None:
+    def update_num_points(self, window: MainWindow, num_points: int):
         window.update_num_points(num_points)
 
-    def update_speed(self, window: MainWindow, speed: int) -> None:
+    def update_speed(self, window: MainWindow, speed: int):
         window.update_speed(speed)
 
     def update_states(
@@ -170,7 +180,7 @@ class Core:
         return np.frombuffer(buffer=buffer, dtype=np.int32).copy()
 
     @staticmethod
-    def _log_debug_states(result: np.ndarray) -> None:
+    def _log_debug_states(result: np.ndarray):
         if logger.isEnabledFor(logging.DEBUG):
             mapping = {0: "calm", 1: "hisses", 2: "wants to fight"}
             log_obj = {i: mapping[state] for i, state in enumerate(result)}

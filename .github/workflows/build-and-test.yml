@@ -24,6 +24,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+      - name: "Install dependencies for Linux"
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install ffmpeg libsm6 libxext6 libglib2.0-0 freeglut3-dev -y
       - name: "Build backend"
         run: make build-backend
       - name: "Install app dependencies"
